@@ -17,5 +17,7 @@ public class RefreshTokenConfiguration : IEntityTypeConfiguration<RefreshToken>
             .HasMaxLength(RefreshTokenConstraints.TokenMaxLength);
 
         builder.HasIndex(rt => rt.Token);
+
+        builder.Property(rt => rt.ReplacedByTokenId);
     }
 }

@@ -21,4 +21,11 @@ public class RefreshTokenRepository(OrderHubDbContext context) : IRefreshTokenRe
     public void Add(RefreshToken refreshToken) => context.RefreshTokens.Add(refreshToken);
 
     public void Update(RefreshToken refreshToken) => context.RefreshTokens.Update(refreshToken);
+
+    public async Task<List<RefreshToken>> GetActiveTokensByUserIdAsync(Guid userId, CancellationToken ct)
+    {
+        return await context.RefreshTokens
+            .Where(rt => rt.UserId == userId && !rt.IsRevoked)
+            .ToListAsync(ct);
+    }
 }

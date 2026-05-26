@@ -1,4 +1,4 @@
-namespace OrderHub.Api.Features.Auth.Requests;
+namespace OrderHub.Api.Endpoints.Auth.Requests;
 
 public record LoginRequest(
     string Email,
