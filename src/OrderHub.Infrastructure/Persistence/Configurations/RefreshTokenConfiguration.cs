@@ -14,7 +14,7 @@ public class RefreshTokenConfiguration : IEntityTypeConfiguration<RefreshToken>
 
         builder.Property(rt => rt.Token)
             .IsRequired()
-            .HasMaxLength(256);
+            .HasMaxLength(RefreshTokenConstraints.TokenMaxLength);
 
         builder.HasIndex(rt => rt.Token);
     }

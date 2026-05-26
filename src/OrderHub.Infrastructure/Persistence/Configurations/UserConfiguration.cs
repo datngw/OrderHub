@@ -14,7 +14,7 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
 
         builder.Property(u => u.Email)
             .IsRequired()
-            .HasMaxLength(256);
+            .HasMaxLength(UserConstraints.EmailMaxLength);
 
         builder.HasIndex(u => u.Email).IsUnique();
 
@@ -23,7 +23,7 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
 
         builder.Property(u => u.FullName)
             .IsRequired()
-            .HasMaxLength(200);
+            .HasMaxLength(UserConstraints.FullNameMaxLength);
 
         builder.HasMany(u => u.RefreshTokens)
             .WithOne(rt => rt.User)

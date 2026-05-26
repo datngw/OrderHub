@@ -14,7 +14,7 @@ public class OrderItemConfiguration : IEntityTypeConfiguration<OrderItem>
         builder.HasKey(oi => oi.Id);
 
         builder.Property(oi => oi.UnitPrice)
-            .HasColumnType("decimal(18,2)");
+            .HasColumnType($"decimal({ProductConstraints.PricePrecision},{ProductConstraints.PriceScale})");
 
         builder.HasOne(oi => oi.Product)
             .WithMany()

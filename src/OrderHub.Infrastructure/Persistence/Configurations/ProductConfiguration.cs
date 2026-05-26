@@ -14,23 +14,23 @@ public class ProductConfiguration : IEntityTypeConfiguration<Product>
 
         builder.Property(p => p.SKU)
             .IsRequired()
-            .HasMaxLength(50);
+            .HasMaxLength(ProductConstraints.SkuMaxLength);
 
         builder.HasIndex(p => p.SKU).IsUnique();
 
         builder.Property(p => p.Name)
             .IsRequired()
-            .HasMaxLength(200);
+            .HasMaxLength(ProductConstraints.NameMaxLength);
 
         builder.Property(p => p.Description)
-            .HasMaxLength(2000);
+            .HasMaxLength(ProductConstraints.DescriptionMaxLength);
 
         builder.Property(p => p.Price)
-            .HasColumnType("decimal(18,2)");
+            .HasColumnType($"decimal({ProductConstraints.PricePrecision},{ProductConstraints.PriceScale})");
 
         builder.Property(p => p.Category)
             .IsRequired()
-            .HasMaxLength(100);
+            .HasMaxLength(ProductConstraints.CategoryMaxLength);
 
         builder.HasIndex(p => new { p.Name, p.Category, p.Price });
     }

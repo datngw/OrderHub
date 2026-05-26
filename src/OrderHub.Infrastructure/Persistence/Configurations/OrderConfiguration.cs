@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using OrderHub.Domain.Orders;
+using OrderHub.Domain.Products;
 using OrderHub.Domain.Users;
 
 namespace OrderHub.Infrastructure.Persistence.Configurations;
@@ -14,7 +15,7 @@ public class OrderConfiguration : IEntityTypeConfiguration<Order>
         builder.HasKey(o => o.Id);
 
         builder.Property(o => o.TotalAmount)
-            .HasColumnType("decimal(18,2)");
+            .HasColumnType($"decimal({ProductConstraints.PricePrecision},{ProductConstraints.PriceScale})");
 
         builder.HasOne(o => o.User)
             .WithMany(u => u.Orders)
