@@ -17,7 +17,7 @@ public sealed class LoginCommandHandler(DbContext dbContext, ITokenService token
             .FirstOrDefaultAsync(u => u.Email == request.Email.ToLowerInvariant(), cancellationToken);
 
         if (user is null || !BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
-            return Result<AuthResponse>.Failure(Error.Unauthorized());
+            return Result<AuthResponse>.Failure(AuthErrors.InvalidCredentials);
 
         var accessToken = tokenService.GenerateAccessToken(user.Id, user.Email, user.Role.ToString());
         var refreshToken = new RefreshTokenEntity

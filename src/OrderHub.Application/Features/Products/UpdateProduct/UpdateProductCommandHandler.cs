@@ -16,7 +16,7 @@ public sealed class UpdateProductCommandHandler(DbContext dbContext)
         var product = await dbContext.Set<Product>().FindAsync([request.Id], cancellationToken);
 
         if (product is null)
-            return Result<ProductResponse>.Failure(Error.NotFound(nameof(Product), request.Id));
+            return Result<ProductResponse>.Failure(ProductErrors.NotFoundById(request.Id));
 
         product.Name = request.Name;
         product.Description = request.Description;

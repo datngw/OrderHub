@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using OrderHub.Application.Common;
 using OrderHub.Application.Common.Messaging;
 using OrderHub.Application.Common.Results;
+using OrderHub.Application.Features.Auth;
 using OrderHub.Domain.Users;
 using RefreshTokenEntity = OrderHub.Domain.Users.RefreshToken;
 
@@ -16,7 +17,7 @@ public sealed class LogoutCommandHandler(DbContext dbContext)
             .FirstOrDefaultAsync(rt => rt.Token == request.RefreshToken, cancellationToken);
 
         if (token is null)
-            return Result.Failure(Error.Unauthorized("Invalid refresh token."));
+            return Result.Failure(AuthErrors.InvalidRefreshToken);
 
         token.IsRevoked = true;
         await dbContext.SaveChangesAsync(cancellationToken);

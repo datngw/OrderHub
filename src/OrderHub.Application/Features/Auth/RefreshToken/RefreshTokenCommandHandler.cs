@@ -17,13 +17,13 @@ public sealed class RefreshTokenCommandHandler(DbContext dbContext, ITokenServic
             .FirstOrDefaultAsync(rt => rt.Token == request.Token, cancellationToken);
 
         if (existingToken is null)
-            return Result<AuthResponse>.Failure(Error.Unauthorized("Invalid refresh token."));
+            return Result<AuthResponse>.Failure(AuthErrors.InvalidRefreshToken);
 
         if (existingToken.IsRevoked)
-            return Result<AuthResponse>.Failure(Error.Unauthorized("Refresh token has been revoked."));
+            return Result<AuthResponse>.Failure(AuthErrors.RefreshTokenRevoked);
 
         if (existingToken.ExpiresAt < DateTime.UtcNow)
-            return Result<AuthResponse>.Failure(Error.Unauthorized("Refresh token has expired."));
+            return Result<AuthResponse>.Failure(AuthErrors.RefreshTokenExpired);
 
         existingToken.IsRevoked = true;
 

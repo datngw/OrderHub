@@ -20,7 +20,7 @@ public sealed class GetProductByIdQueryHandler(DbContext dbContext)
             .FirstOrDefaultAsync(cancellationToken);
 
         if (product is null)
-            return Result<ProductResponse>.Failure(Error.NotFound(nameof(Product), request.Id));
+            return Result<ProductResponse>.Failure(ProductErrors.NotFoundById(request.Id));
 
         return product;
     }

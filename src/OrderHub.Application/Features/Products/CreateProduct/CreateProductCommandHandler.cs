@@ -14,7 +14,7 @@ public sealed class CreateProductCommandHandler(DbContext dbContext)
     public async Task<Result<ProductResponse>> Handle(CreateProductCommand request, CancellationToken cancellationToken)
     {
         if (await dbContext.Set<Product>().AnyAsync(p => p.SKU == request.SKU, cancellationToken))
-            return Result<ProductResponse>.Failure(Error.Conflict($"Product with SKU '{request.SKU}' already exists."));
+            return Result<ProductResponse>.Failure(ProductErrors.SkuAlreadyExists(request.SKU));
 
         var product = request.Adapt<Product>();
         dbContext.Set<Product>().Add(product);

@@ -14,7 +14,7 @@ public sealed class RegisterCommandHandler(DbContext dbContext, ITokenService to
     public async Task<Result<AuthResponse>> Handle(RegisterCommand request, CancellationToken cancellationToken)
     {
         if (await dbContext.Set<User>().AnyAsync(u => u.Email == request.Email.ToLowerInvariant(), cancellationToken))
-            return Result<AuthResponse>.Failure(Error.Conflict("A user with this email already exists."));
+            return Result<AuthResponse>.Failure(AuthErrors.EmailAlreadyExists);
 
         var user = new User
         {
