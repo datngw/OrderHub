@@ -22,7 +22,7 @@ Api → Infrastructure → Application → Domain
 ### Key Patterns
 
 - **CQRS via MediatR** — Commands for writes, Queries for reads. All business logic in handlers, never in controllers.
-- **Direct DbContext** — No repository abstraction. DbContext is injected directly into handlers. It already provides Unit-of-Work and Repository patterns.
+- **Specific Repository + Unit of Work** — Each entity has its own repository interface (IProductRepository, IUserRepository, etc.) defined in Domain and implemented in Infrastructure. IUnitOfWork wraps SaveChanges and transactions.
 - **Separate DTOs** — Request DTOs and response DTOs are always separate from domain entities. Never expose entities to clients.
 - **Pessimistic locking** — `SELECT ... FOR UPDATE` on product rows during order creation to prevent overselling.
 
@@ -85,7 +85,7 @@ OrderHub/
 - All I/O must be async — no `.Result`, `.Wait()`, or `async void`
 - No hardcoded secrets — use environment variables or user secrets
 - Controllers are thin — only handle HTTP concerns, delegate to MediatR
-- DI scopes: DbContext/Handlers = Scoped, TokenService = Scoped, Cache = Singleton
+- DI scopes: Repositories/UnitOfWork/Handlers = Scoped, TokenService = Scoped, Cache = Singleton
 - Security headers on all responses: HSTS, X-Content-Type-Options, X-Frame-Options, CSP
 - Errors returned as Problem Details (RFC 7807) — no stack traces in production
 
@@ -128,7 +128,7 @@ docker-compose up --build
 2. **Pessimistic locking for stock** — Prevents oversell under concurrency. Correctness > throughput for commerce.
 3. **Mapster over AutoMapper** — Faster compile-time code generation, less reflection.
 4. **IMemoryCache over Redis** — Single-instance deployment. Event-driven invalidation in same process.
-5. **Direct DbContext over Repository** — EF Core already implements Unit-of-Work and Repository. Extra abstraction adds no value at this scale.
+5. **Specific Repository + Unit of Work** — Each entity has its own repository interface (IProductRepository, IUserRepository, IRefreshTokenRepository, IOrderRepository) in Domain/Interfaces/. IUnitOfWork wraps SaveChanges and transactions. Infrastructure/Persistence/Repositories/ contains implementations.
 6. **BCrypt over Argon2** — Simpler API, no native dependency, sufficient security with adaptive cost.
 7. **Category as string** — No separate Category table for MVP. Easy to normalize later.
 8. **Price snapshot in OrderItem** — UnitPrice captured at order creation time. Decouples historical data from current prices.

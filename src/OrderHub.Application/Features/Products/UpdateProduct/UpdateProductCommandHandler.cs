@@ -1,19 +1,20 @@
 using Mapster;
-using Microsoft.EntityFrameworkCore;
 using OrderHub.Application.Common;
 using OrderHub.Application.Common.Messaging;
 using OrderHub.Application.Common.Results;
 using OrderHub.Application.Features.Products;
+using OrderHub.Application.Common.Persistence;
+
 using OrderHub.Domain.Products;
 
 namespace OrderHub.Application.Features.Products.UpdateProduct;
 
-public sealed class UpdateProductCommandHandler(DbContext dbContext)
+public sealed class UpdateProductCommandHandler(IProductRepository productRepository, IUnitOfWork unitOfWork)
     : ICommandHandler<UpdateProductCommand, ProductResponse>
 {
     public async Task<Result<ProductResponse>> Handle(UpdateProductCommand request, CancellationToken cancellationToken)
     {
-        var product = await dbContext.Set<Product>().FindAsync([request.Id], cancellationToken);
+        var product = await productRepository.GetByIdAsync(request.Id, cancellationToken);
 
         if (product is null)
             return Result<ProductResponse>.Failure(ProductErrors.NotFoundById(request.Id));
@@ -25,7 +26,7 @@ public sealed class UpdateProductCommandHandler(DbContext dbContext)
         product.Category = request.Category;
         product.UpdatedAt = DateTime.UtcNow;
 
-        await dbContext.SaveChangesAsync(cancellationToken);
+        await unitOfWork.SaveChangesAsync(cancellationToken);
 
         return product.Adapt<ProductResponse>();
     }

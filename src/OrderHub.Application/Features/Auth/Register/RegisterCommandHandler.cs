@@ -1,19 +1,20 @@
-using Microsoft.EntityFrameworkCore;
 using OrderHub.Application.Common;
 using OrderHub.Application.Common.Messaging;
 using OrderHub.Application.Common.Results;
 using OrderHub.Application.Features.Auth;
+using OrderHub.Application.Common.Persistence;
+
 using OrderHub.Domain.Users;
 using RefreshTokenEntity = OrderHub.Domain.Users.RefreshToken;
 
 namespace OrderHub.Application.Features.Auth.Register;
 
-public sealed class RegisterCommandHandler(DbContext dbContext, ITokenService tokenService)
+public sealed class RegisterCommandHandler(IUserRepository userRepository, IRefreshTokenRepository refreshTokenRepository, IUnitOfWork unitOfWork, ITokenService tokenService)
     : ICommandHandler<RegisterCommand, AuthResponse>
 {
     public async Task<Result<AuthResponse>> Handle(RegisterCommand request, CancellationToken cancellationToken)
     {
-        if (await dbContext.Set<User>().AnyAsync(u => u.Email == request.Email.ToLowerInvariant(), cancellationToken))
+        if (await userRepository.ExistsByEmailAsync(request.Email.ToLowerInvariant(), cancellationToken))
             return Result<AuthResponse>.Failure(AuthErrors.EmailAlreadyExists);
 
         var user = new User
@@ -21,11 +22,11 @@ public sealed class RegisterCommandHandler(DbContext dbContext, ITokenService to
             Email = request.Email.ToLowerInvariant(),
             PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password),
             FullName = request.FullName,
-            Role = UserRole.Customer
+            Role = UserRoleEnum.Customer
         };
 
-        dbContext.Set<User>().Add(user);
-        await dbContext.SaveChangesAsync(cancellationToken);
+        userRepository.Add(user);
+        await unitOfWork.SaveChangesAsync(cancellationToken);
 
         var accessToken = tokenService.GenerateAccessToken(user.Id, user.Email, user.Role.ToString());
         var refreshToken = new RefreshTokenEntity
@@ -35,8 +36,8 @@ public sealed class RegisterCommandHandler(DbContext dbContext, ITokenService to
             ExpiresAt = DateTime.UtcNow.AddDays(7)
         };
 
-        dbContext.Set<RefreshTokenEntity>().Add(refreshToken);
-        await dbContext.SaveChangesAsync(cancellationToken);
+        refreshTokenRepository.Add(refreshToken);
+        await unitOfWork.SaveChangesAsync(cancellationToken);
 
         return new AuthResponse(accessToken, refreshToken.Token, user.Email, user.FullName, user.Role.ToString());
     }

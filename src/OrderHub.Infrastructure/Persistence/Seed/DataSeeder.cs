@@ -17,7 +17,7 @@ public static class DataSeeder
             Email = "admin@orderhub.com",
             PasswordHash = BCrypt.Net.BCrypt.HashPassword("Admin@123"),
             FullName = "System Admin",
-            Role = UserRole.Admin
+            Role = UserRoleEnum.Admin
         };
 
         var customer = new User
@@ -25,7 +25,7 @@ public static class DataSeeder
             Email = "customer@orderhub.com",
             PasswordHash = BCrypt.Net.BCrypt.HashPassword("Customer@123"),
             FullName = "John Doe",
-            Role = UserRole.Customer
+            Role = UserRoleEnum.Customer
         };
 
         context.Users.AddRange(admin, customer);

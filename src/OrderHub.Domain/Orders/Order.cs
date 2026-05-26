@@ -6,7 +6,7 @@ namespace OrderHub.Domain.Orders;
 public class Order : BaseEntity
 {
     public Guid UserId { get; set; }
-    public OrderStatus Status { get; set; } = OrderStatus.Pending;
+    public OrderStatusEnum Status { get; set; } = OrderStatusEnum.Pending;
     public decimal TotalAmount { get; set; }
 
     public User User { get; set; } = null!;

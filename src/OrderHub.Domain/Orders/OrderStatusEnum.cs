@@ -1,6 +1,6 @@
 namespace OrderHub.Domain.Orders;
 
-public enum OrderStatus
+public enum OrderStatusEnum
 {
     Pending = 0,
     Confirmed = 1,

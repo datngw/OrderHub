@@ -1,20 +1,19 @@
-using Microsoft.EntityFrameworkCore;
 using OrderHub.Application.Common;
 using OrderHub.Application.Common.Messaging;
 using OrderHub.Application.Common.Results;
 using OrderHub.Application.Features.Auth;
+using OrderHub.Application.Common.Persistence;
+using OrderHub.Domain.Users;
 using RefreshTokenEntity = OrderHub.Domain.Users.RefreshToken;
 
 namespace OrderHub.Application.Features.Auth.RefreshToken;
 
-public sealed class RefreshTokenCommandHandler(DbContext dbContext, ITokenService tokenService)
+public sealed class RefreshTokenCommandHandler(IRefreshTokenRepository refreshTokenRepository, IUnitOfWork unitOfWork, ITokenService tokenService)
     : ICommandHandler<RefreshTokenCommand, AuthResponse>
 {
     public async Task<Result<AuthResponse>> Handle(RefreshTokenCommand request, CancellationToken cancellationToken)
     {
-        var existingToken = await dbContext.Set<RefreshTokenEntity>()
-            .Include(rt => rt.User)
-            .FirstOrDefaultAsync(rt => rt.Token == request.Token, cancellationToken);
+        var existingToken = await refreshTokenRepository.GetByTokenWithUserAsync(request.Token, cancellationToken);
 
         if (existingToken is null)
             return Result<AuthResponse>.Failure(AuthErrors.InvalidRefreshToken);
@@ -34,8 +33,8 @@ public sealed class RefreshTokenCommandHandler(DbContext dbContext, ITokenServic
             ExpiresAt = DateTime.UtcNow.AddDays(7)
         };
 
-        dbContext.Set<RefreshTokenEntity>().Add(newRefreshToken);
-        await dbContext.SaveChangesAsync(cancellationToken);
+        refreshTokenRepository.Add(newRefreshToken);
+        await unitOfWork.SaveChangesAsync(cancellationToken);
 
         var user = existingToken.User;
         var accessToken = tokenService.GenerateAccessToken(user.Id, user.Email, user.Role.ToString());
