@@ -47,7 +47,7 @@ public sealed class ProductEndpoints : IEndpointGroup
         .Produces<ProductResponse>(StatusCodes.Status201Created)
         .ProducesValidationProblem()
         .ProducesProblem(StatusCodes.Status409Conflict)
-        .RequireAuthorization("AdminOnly");
+        .RequireAuthorization(AuthorizationPolicies.Policies.AdminOnly);
 
         group.MapPut("/{id:guid}", static async (Guid id, [FromBody] UpdateProductRequest request, IMediator mediator, CancellationToken ct) =>
         {
@@ -59,7 +59,7 @@ public sealed class ProductEndpoints : IEndpointGroup
         .Produces<ProductResponse>()
         .ProducesValidationProblem()
         .ProducesProblem(StatusCodes.Status404NotFound)
-        .RequireAuthorization("AdminOnly");
+        .RequireAuthorization(AuthorizationPolicies.Policies.AdminOnly);
 
         group.MapDelete("/{id:guid}", static async (Guid id, IMediator mediator, CancellationToken ct) =>
         {
@@ -69,6 +69,6 @@ public sealed class ProductEndpoints : IEndpointGroup
         .WithName("DeleteProduct").WithSummary("Soft delete a product")
         .Produces(StatusCodes.Status204NoContent)
         .ProducesProblem(StatusCodes.Status404NotFound)
-        .RequireAuthorization("AdminOnly");
+        .RequireAuthorization(AuthorizationPolicies.Policies.AdminOnly);
     }
 }
