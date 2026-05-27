@@ -1,0 +1,52 @@
+services:
+  orderhub-db:
+    image: postgres:16-alpine
+    container_name: orderhub-db
+    environment:
+      POSTGRES_DB: orderhub
+      POSTGRES_USER: orderhub
+      POSTGRES_PASSWORD: orderhub_secret
+    ports:
+      - "5432:5432"
+    volumes:
+      - orderhub-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U orderhub -d orderhub"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  orderhub-pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: orderhub-pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@orderhub.dev
+      PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+      - "5050:80"
+    depends_on:
+      orderhub-db:
+        condition: service_healthy
+
+  orderhub-api:
+    build:
+      context: .
+      dockerfile: src/OrderHub.Api/Dockerfile
+    container_name: orderhub-api
+    ports:
+      - "5000:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__DefaultConnection=Host=orderhub-db;Port=5432;Database=orderhub;Username=orderhub;Password=orderhub_secret
+      - Jwt__Key=${JWT_KEY:-super_secret_key_change_in_production_min_32_chars!!}
+      - Jwt__Issuer=OrderHub
+      - Jwt__Audience=OrderHub
+      - Jwt__AccessTokenMinutes=15
+      - Jwt__RefreshTokenDays=7
+    depends_on:
+      orderhub-db:
+        condition: service_healthy
+
+volumes:
+  orderhub-db-data:

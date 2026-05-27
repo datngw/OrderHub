@@ -124,6 +124,11 @@ public static class DependencyInjection
             .AddContentSecurityPolicy(builder =>
             {
                 builder.AddDefaultSrc().Self();
+                builder.AddScriptSrc().Self().From("https://cdn.jsdelivr.net").UnsafeInline();
+                builder.AddStyleSrc().Self().From("https://cdn.jsdelivr.net").UnsafeInline();
+                builder.AddImgSrc().Self().From("data:");
+                builder.AddFontSrc().Self().From("https://cdn.jsdelivr.net");
+                builder.AddConnectSrc().Self();
             })
             .RemoveServerHeader();
 
@@ -147,7 +152,10 @@ public static class DependencyInjection
             {
                 options
                     .WithTitle("OrderHub API")
-                    .WithDefaultHttpClient(ScalarTarget.CSharp, ScalarClient.HttpClient);
+                    .WithOpenApiRoutePattern("/swagger/{documentName}/swagger.json")
+                    .WithDefaultHttpClient(ScalarTarget.CSharp, ScalarClient.HttpClient)
+                    .AddPreferredSecuritySchemes(["Bearer"])
+                    .AddDocument("v1", routePattern: "/swagger/v1/swagger.json");
             });
         }
 
