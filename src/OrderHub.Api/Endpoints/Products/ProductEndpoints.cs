@@ -27,64 +27,80 @@ public sealed class ProductEndpoints : IEndpointGroup
 
         var group = endpoints.MapGroup("/api/v{version:apiVersion}/products")
             .WithApiVersionSet(versionSet)
-            .WithTags("Products");
+            .WithTags("Products")
+            .RequireRateLimiting("api");
 
-        group.MapGet("/", static async ([AsParameters] GetProductsQuery query, IMediator mediator, CancellationToken ct) =>
-        {
-            var result = await mediator.Send(query, ct);
-            return result.ToResponse();
-        })
-        .WithName("GetProducts").WithSummary("Get paginated product list with filters")
-        .HasApiVersion(new ApiVersion(1))
-        .CacheOutput("products")
-        .Produces<PagedResult<ProductResponse>>();
+        group.MapGet("/", HandleGetProducts)
+            .WithName("GetProducts").WithSummary("Get paginated product list with filters")
+            .HasApiVersion(new ApiVersion(1))
+            .CacheOutput("products")
+            .Produces<PagedResult<ProductResponse>>();
 
-        group.MapGet("/{id:guid}", static async (Guid id, IMediator mediator, CancellationToken ct) =>
-        {
-            var result = await mediator.Send(new GetProductByIdQuery(id), ct);
-            return result.ToResponse();
-        })
-        .WithName("GetProduct").WithSummary("Get product by ID")
-        .HasApiVersion(new ApiVersion(1))
-        .CacheOutput("products")
-        .Produces<ProductResponse>()
-        .ProducesProblem(StatusCodes.Status404NotFound);
+        group.MapGet("/{id:guid}", HandleGetProduct)
+            .WithName("GetProduct").WithSummary("Get product by ID")
+            .HasApiVersion(new ApiVersion(1))
+            .CacheOutput("products")
+            .Produces<ProductResponse>()
+            .ProducesProblem(StatusCodes.Status404NotFound);
 
-        group.MapPost("/", static async ([FromBody] CreateProductRequest request, IMediator mediator, CancellationToken ct) =>
-        {
-            var command = new CreateProductCommand(request.SKU, request.Name, request.Description, request.Price, request.Stock, request.Category);
-            var result = await mediator.Send(command, ct);
-            return result.ToCreatedResponse($"/api/v1/products/{result.Value?.Id}");
-        })
-        .WithName("CreateProduct").WithSummary("Create a new product")
-        .HasApiVersion(new ApiVersion(1))
-        .Produces<ProductResponse>(StatusCodes.Status201Created)
-        .ProducesValidationProblem()
-        .ProducesProblem(StatusCodes.Status409Conflict)
-        .RequireAuthorization(AuthorizationPolicies.Policies.AdminOnly);
+        group.MapPost("/", HandleCreateProduct)
+            .WithName("CreateProduct").WithSummary("Create a new product")
+            .HasApiVersion(new ApiVersion(1))
+            .Produces<ProductResponse>(StatusCodes.Status201Created)
+            .ProducesValidationProblem()
+            .ProducesProblem(StatusCodes.Status409Conflict)
+            .RequireAuthorization(AuthorizationPolicies.Policies.AdminOnly);
 
-        group.MapPut("/{id:guid}", static async (Guid id, [FromBody] UpdateProductRequest request, IMediator mediator, CancellationToken ct) =>
-        {
-            var command = new UpdateProductCommand(id, request.Name, request.Description, request.Price, request.Stock, request.Category);
-            var result = await mediator.Send(command, ct);
-            return result.ToResponse();
-        })
-        .WithName("UpdateProduct").WithSummary("Update an existing product")
-        .HasApiVersion(new ApiVersion(1))
-        .Produces<ProductResponse>()
-        .ProducesValidationProblem()
-        .ProducesProblem(StatusCodes.Status404NotFound)
-        .RequireAuthorization(AuthorizationPolicies.Policies.AdminOnly);
+        group.MapPut("/{id:guid}", HandleUpdateProduct)
+            .WithName("UpdateProduct").WithSummary("Update an existing product")
+            .HasApiVersion(new ApiVersion(1))
+            .Produces<ProductResponse>()
+            .ProducesValidationProblem()
+            .ProducesProblem(StatusCodes.Status404NotFound)
+            .RequireAuthorization(AuthorizationPolicies.Policies.AdminOnly);
 
-        group.MapDelete("/{id:guid}", static async (Guid id, IMediator mediator, CancellationToken ct) =>
-        {
-            var result = await mediator.Send(new DeleteProductCommand(id), ct);
-            return result.ToNoContentResponse();
-        })
-        .WithName("DeleteProduct").WithSummary("Soft delete a product")
-        .HasApiVersion(new ApiVersion(1))
-        .Produces(StatusCodes.Status204NoContent)
-        .ProducesProblem(StatusCodes.Status404NotFound)
-        .RequireAuthorization(AuthorizationPolicies.Policies.AdminOnly);
+        group.MapDelete("/{id:guid}", HandleDeleteProduct)
+            .WithName("DeleteProduct").WithSummary("Soft delete a product")
+            .HasApiVersion(new ApiVersion(1))
+            .Produces(StatusCodes.Status204NoContent)
+            .ProducesProblem(StatusCodes.Status404NotFound)
+            .RequireAuthorization(AuthorizationPolicies.Policies.AdminOnly);
+    }
+
+    private static async Task<Results<Ok<PagedResult<ProductResponse>>, ProblemHttpResult>> HandleGetProducts(
+        [AsParameters] GetProductsQuery query, IMediator mediator, CancellationToken ct)
+    {
+        var result = await mediator.Send(query, ct);
+        return result.ToResponse();
+    }
+
+    private static async Task<Results<Ok<ProductResponse>, ProblemHttpResult>> HandleGetProduct(
+        Guid id, IMediator mediator, CancellationToken ct)
+    {
+        var result = await mediator.Send(new GetProductByIdQuery(id), ct);
+        return result.ToResponse();
+    }
+
+    private static async Task<Results<Created<ProductResponse>, ProblemHttpResult>> HandleCreateProduct(
+        [FromBody] CreateProductRequest request, IMediator mediator, CancellationToken ct)
+    {
+        var command = new CreateProductCommand(request.SKU, request.Name, request.Description, request.Price, request.Stock, request.Category);
+        var result = await mediator.Send(command, ct);
+        return result.ToCreatedResponse($"/api/v1/products/{result.Value?.Id}");
+    }
+
+    private static async Task<Results<Ok<ProductResponse>, ProblemHttpResult>> HandleUpdateProduct(
+        Guid id, [FromBody] UpdateProductRequest request, IMediator mediator, CancellationToken ct)
+    {
+        var command = new UpdateProductCommand(id, request.Name, request.Description, request.Price, request.Stock, request.Category);
+        var result = await mediator.Send(command, ct);
+        return result.ToResponse();
+    }
+
+    private static async Task<Results<NoContent, ProblemHttpResult>> HandleDeleteProduct(
+        Guid id, IMediator mediator, CancellationToken ct)
+    {
+        var result = await mediator.Send(new DeleteProductCommand(id), ct);
+        return result.ToNoContentResponse();
     }
 }
