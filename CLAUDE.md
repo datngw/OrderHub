@@ -26,6 +26,7 @@ Api → Infrastructure → Application → Domain
 - **Separate DTOs** — Request DTOs and response DTOs are always separate from domain entities. Never expose entities to clients.
 - **Pessimistic locking** — `SELECT ... FOR UPDATE` on product rows during order creation to prevent overselling.
 - **Observability** — Serilog for structured logging, OpenTelemetry SDK for distributed tracing + metrics, Jaeger for visualization. All signals exported via OTLP.
+- **Result pattern** — Handlers return `Result<T>` instead of throwing. Domain error collections (`ProductErrors`, `AuthErrors`) define typed `Error` → mapped to HTTP status via `ResultExtensions`.
 
 ## Tech Stack
 
@@ -98,7 +99,8 @@ OrderHub/
 - Endpoints are thin — only handle HTTP concerns, delegate to MediatR
 - DI scopes: Repositories/UnitOfWork/Handlers = Scoped, TokenService = Scoped
 - Security headers on all responses: HSTS, X-Content-Type-Options, X-Frame-Options, CSP
-- Errors returned as Problem Details (RFC 7807) — no stack traces in production
+- Business errors: handlers return `Result<T>` → `ResultExtensions` maps to ProblemDetails (RFC 9457). No exceptions for expected failures.
+- Pipeline/unexpected errors: `GlobalExceptionHandler` catches validation and unhandled exceptions → ProblemDetails (RFC 9457). No stack traces.
 
 ### Observability
 
@@ -152,6 +154,7 @@ docker-compose up --build
 8. **Price snapshot in OrderItem** — UnitPrice captured at order creation time. Decouples historical data from current prices.
 9. **Serilog + OpenTelemetry over pure OTel logging** — Serilog provides rich structured logging with mature ecosystem; OpenTelemetry SDK adds vendor-neutral tracing and metrics. `Serilog.Sinks.OpenTelemetry` bridges both worlds via OTLP.
 10. **Jaeger over Seq/Application Insights** — Open-source, native OTLP support, purpose-built for distributed tracing. Lightweight Docker container, no licensing cost.
+11. **Result pattern over exceptions** — Business errors use `Result<T>`, exceptions only for validation pipeline and unexpected failures. Both paths → ProblemDetails (RFC 9457).
 
 ## Domain Entities
 

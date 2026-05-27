@@ -12,7 +12,7 @@
 - [x] Persistence — EF Core DbContext, Fluent API configs, indexes, initial migration, seed data (1 admin + 1 customer + 100 products)
 - [x] Authentication & Authorization — Register/Login/Refresh/Logout, JWT (15 min) + refresh token (7 days), PasswordHasher<T>, role-based auth
 - [x] Product Catalog — CRUD (Admin-only, soft delete), paginated list with filter/search/sort, CQRS + FluentValidation + Mapster
-- [x] Cross-Cutting Concerns — Serilog, global exception handler (RFC 7807), Result pattern, security headers, output caching, response compression, CORS, rate limiting, API versioning, Scalar + Swashbuckle docs, request timeouts
+- [x] Cross-Cutting Concerns — Serilog, global exception handler (RFC 9457 ProblemDetails), Result pattern for business errors, security headers, output caching, response compression, CORS, rate limiting, API versioning, Scalar + Swashbuckle docs, request timeouts
 - [x] Containerization — Multi-stage Dockerfile, docker-compose (App + PostgreSQL), .dockerignore
 
 ---
@@ -103,7 +103,7 @@
 | 9   | Order history for current user (paginated)                                   | P0       | [ ]    |
 | 10  | Admin reports with caching + invalidation                                    | P1       | [ ]    |
 | 11  | Rate limiting on API endpoints                                               | P1       | [x]    |
-| 12  | Problem Details errors (RFC 7807, no stack trace leak)                       | P0       | [x]    |
+| 12  | Problem Details errors (RFC 9457) — Result pattern + GlobalExceptionHandler, no stack trace leak | P0       | [x]    |
 | 13  | Separate request/response DTOs (no entity exposure)                          | P0       | [x]    |
 | 14  | Unit test coverage ≥ 60% in Application layer                                | P0       | [ ]    |
 | 15  | Integration tests: login, create order, cancel order                         | P0       | [ ]    |

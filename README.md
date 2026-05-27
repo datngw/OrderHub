@@ -24,12 +24,12 @@ Clean Architecture with strict layer dependencies — each layer only depends on
 Api  →  Infrastructure  →  Application  →  Domain
 ```
 
-| Layer | Responsibility |
-|---|---|
-| **Domain** | Entities, enums, value objects, repository interfaces. Zero external dependencies. |
-| **Application** | MediatR commands/queries, FluentValidation, DTOs, Result pattern, handler interfaces. |
-| **Infrastructure** | EF Core, repository implementations, JWT auth, output caching, OpenTelemetry setup. |
-| **Api** | Minimal API endpoints, middleware, DI registration. Entry point only. |
+| Layer              | Responsibility                                                                                          |
+| ------------------ | ------------------------------------------------------------------------------------------------------- |
+| **Domain**         | Entities, enums, value objects, repository interfaces. Zero external dependencies.                      |
+| **Application**    | MediatR commands/queries, FluentValidation, DTOs, Result pattern (business errors), handler interfaces. |
+| **Infrastructure** | EF Core, repository implementations, JWT auth, output caching, OpenTelemetry setup.                     |
+| **Api**            | Minimal API endpoints, middleware, DI registration. Entry point only.                                   |
 
 Key patterns in use:
 
@@ -41,24 +41,24 @@ Key patterns in use:
 
 ## Tech Stack
 
-| Area | Technology |
-|---|---|
-| Runtime | .NET 8 (LTS) |
-| Database | PostgreSQL 16 |
-| ORM | EF Core 8 + Npgsql |
-| Auth | JWT + PasswordHasher\<T\> |
-| Validation | FluentValidation |
-| Mapping | Mapster |
-| CQRS | MediatR |
-| Caching | ASP.NET Core Output Caching |
-| Logging | Serilog → OTLP |
-| Tracing & Metrics | OpenTelemetry SDK |
-| Tracing UI | Jaeger |
-| API Docs | Scalar + Swashbuckle |
-| Versioning | Asp.Versioning (URL segment) |
-| Security | NetEscapades headers, rate limiting |
-| Testing | xUnit + FluentAssertions + Moq + Testcontainers |
-| Containers | Docker + docker-compose |
+| Area              | Technology                                      |
+| ----------------- | ----------------------------------------------- |
+| Runtime           | .NET 8 (LTS)                                    |
+| Database          | PostgreSQL 16                                   |
+| ORM               | EF Core 8 + Npgsql                              |
+| Auth              | JWT + PasswordHasher\<T\>                       |
+| Validation        | FluentValidation                                |
+| Mapping           | Mapster                                         |
+| CQRS              | MediatR                                         |
+| Caching           | ASP.NET Core Output Caching                     |
+| Logging           | Serilog → OTLP                                  |
+| Tracing & Metrics | OpenTelemetry SDK                               |
+| Tracing UI        | Jaeger                                          |
+| API Docs          | Scalar + Swashbuckle                            |
+| Versioning        | Asp.Versioning (URL segment)                    |
+| Security          | NetEscapades headers, rate limiting             |
+| Testing           | xUnit + FluentAssertions + Moq + Testcontainers |
+| Containers        | Docker + docker-compose                         |
 
 ---
 
@@ -85,11 +85,11 @@ cp .env.example .env
 docker-compose up --build
 ```
 
-| Service | URL |
-|---|---|
-| API | `http://localhost:5000` |
+| Service   | URL                               |
+| --------- | --------------------------------- |
+| API       | `http://localhost:5000`           |
 | Scalar UI | `http://localhost:5000/scalar/v1` |
-| pgAdmin | `http://localhost:5050` |
+| pgAdmin   | `http://localhost:5050`           |
 
 ### Run Locally
 
@@ -151,46 +151,46 @@ When running locally without Docker, use .NET User Secrets or environment variab
 
 ### Auth
 
-| Method | Endpoint | Auth | Description |
-|---|---|---|---|
-| POST | `/api/v1/auth/register` | No | Register a new user |
-| POST | `/api/v1/auth/login` | No | Login, receive tokens |
-| POST | `/api/v1/auth/refresh` | No | Refresh access token |
-| POST | `/api/v1/auth/logout` | Yes | Revoke refresh token |
+| Method | Endpoint                | Auth | Description           |
+| ------ | ----------------------- | ---- | --------------------- |
+| POST   | `/api/v1/auth/register` | No   | Register a new user   |
+| POST   | `/api/v1/auth/login`    | No   | Login, receive tokens |
+| POST   | `/api/v1/auth/refresh`  | No   | Refresh access token  |
+| POST   | `/api/v1/auth/logout`   | Yes  | Revoke refresh token  |
 
 ### Products
 
-| Method | Endpoint | Auth | Description |
-|---|---|---|---|
-| GET | `/api/v1/products` | No | List products (paginated, filterable, sortable) |
-| GET | `/api/v1/products/{id}` | No | Get product detail |
-| POST | `/api/v1/products` | Admin | Create product |
-| PUT | `/api/v1/products/{id}` | Admin | Update product |
-| DELETE | `/api/v1/products/{id}` | Admin | Soft delete product |
+| Method | Endpoint                | Auth  | Description                                     |
+| ------ | ----------------------- | ----- | ----------------------------------------------- |
+| GET    | `/api/v1/products`      | No    | List products (paginated, filterable, sortable) |
+| GET    | `/api/v1/products/{id}` | No    | Get product detail                              |
+| POST   | `/api/v1/products`      | Admin | Create product                                  |
+| PUT    | `/api/v1/products/{id}` | Admin | Update product                                  |
+| DELETE | `/api/v1/products/{id}` | Admin | Soft delete product                             |
 
 ### Orders
 
-| Method | Endpoint | Auth | Description |
-|---|---|---|---|
-| POST | `/api/v1/orders` | Customer+ | Create order (atomic stock deduction) |
-| GET | `/api/v1/orders/me` | Customer+ | Current user's orders (paginated) |
-| GET | `/api/v1/orders/{id}` | Customer+ | Order detail (owner or admin) |
-| PUT | `/api/v1/orders/{id}/status` | Admin | Update order status |
-| POST | `/api/v1/orders/{id}/cancel` | Customer+ | Cancel order (Pending only, restores stock) |
+| Method | Endpoint                     | Auth      | Description                                 |
+| ------ | ---------------------------- | --------- | ------------------------------------------- |
+| POST   | `/api/v1/orders`             | Customer+ | Create order (atomic stock deduction)       |
+| GET    | `/api/v1/orders/me`          | Customer+ | Current user's orders (paginated)           |
+| GET    | `/api/v1/orders/{id}`        | Customer+ | Order detail (owner or admin)               |
+| PUT    | `/api/v1/orders/{id}/status` | Admin     | Update order status                         |
+| POST   | `/api/v1/orders/{id}/cancel` | Customer+ | Cancel order (Pending only, restores stock) |
 
 ### Admin Reports
 
-| Method | Endpoint | Auth | Description |
-|---|---|---|---|
-| GET | `/api/v1/admin/reports/top-products` | Admin | Top 10 products by revenue |
-| GET | `/api/v1/admin/reports/revenue-by-day` | Admin | Revenue aggregated by day |
+| Method | Endpoint                               | Auth  | Description                |
+| ------ | -------------------------------------- | ----- | -------------------------- |
+| GET    | `/api/v1/admin/reports/top-products`   | Admin | Top 10 products by revenue |
+| GET    | `/api/v1/admin/reports/revenue-by-day` | Admin | Revenue aggregated by day  |
 
 ### Health
 
-| Method | Endpoint | Description |
-|---|---|---|
-| GET | `/health` | Liveness probe |
-| GET | `/health/ready` | Readiness probe (checks DB connection) |
+| Method | Endpoint        | Description                            |
+| ------ | --------------- | -------------------------------------- |
+| GET    | `/health`       | Liveness probe                         |
+| GET    | `/health/ready` | Readiness probe (checks DB connection) |
 
 ---
 
@@ -198,11 +198,11 @@ When running locally without Docker, use .NET User Secrets or environment variab
 
 All telemetry is exported via **OTLP** to Jaeger.
 
-| Signal | Source | Examples |
-|---|---|---|
-| Traces | ASP.NET Core, EF Core, custom ActivitySource | Request → Handler → DB → Response |
-| Metrics | Runtime instrumentation, custom Meter | `orders.created`, `stock.oversell_attempts`, request duration |
-| Logs | Serilog → OTLP sink | Structured logs with `TraceId` + `SpanId` correlation |
+| Signal  | Source                                       | Examples                                                      |
+| ------- | -------------------------------------------- | ------------------------------------------------------------- |
+| Traces  | ASP.NET Core, EF Core, custom ActivitySource | Request → Handler → DB → Response                             |
+| Metrics | Runtime instrumentation, custom Meter        | `orders.created`, `stock.oversell_attempts`, request duration |
+| Logs    | Serilog → OTLP sink                          | Structured logs with `TraceId` + `SpanId` correlation         |
 
 ---
 
@@ -229,16 +229,16 @@ OrderHub/
 
 ## Design Decisions
 
-| Decision | Rationale |
-|---|---|
-| PostgreSQL over SQL Server | Open-source, mature row-level locking, no licensing cost |
-| Pessimistic locking for stock | Guarantees no oversell under concurrency; correctness over throughput |
-| Mapster over AutoMapper | Compile-time code generation, less runtime reflection |
-| Output Caching over Redis | Built into ASP.NET Core, tagged policies for granular invalidation; Redis available when scaling |
-| PasswordHasher\<T\> over BCrypt | Built-in ASP.NET Core, auto-upgradable hash format, no external dependency |
-| Specific Repository + Unit of Work | Focused contracts per entity, explicit transaction boundaries, easier to test |
-| Serilog + OpenTelemetry | Serilog for structured logging maturity; OpenTelemetry SDK for vendor-neutral tracing and metrics |
-| Jaeger over Seq/App Insights | Open-source, native OTLP, lightweight Docker container |
+| Decision                           | Rationale                                                                                         |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------- |
+| PostgreSQL over SQL Server         | Open-source, mature row-level locking, no licensing cost                                          |
+| Pessimistic locking for stock      | Guarantees no oversell under concurrency; correctness over throughput                             |
+| Mapster over AutoMapper            | Compile-time code generation, less runtime reflection                                             |
+| Output Caching over Redis          | Built into ASP.NET Core, tagged policies for granular invalidation; Redis available when scaling  |
+| PasswordHasher\<T\> over BCrypt    | Built-in ASP.NET Core, auto-upgradable hash format, no external dependency                        |
+| Specific Repository + Unit of Work | Focused contracts per entity, explicit transaction boundaries, easier to test                     |
+| Serilog + OpenTelemetry            | Serilog for structured logging maturity; OpenTelemetry SDK for vendor-neutral tracing and metrics |
+| Jaeger over Seq/App Insights       | Open-source, native OTLP, lightweight Docker container                                            |
 
 ---
 
@@ -246,10 +246,10 @@ OrderHub/
 
 On first migration, two accounts are seeded for testing:
 
-| Role | Email | Password |
-|---|---|---|
-| Admin | `admin@orderhub.vn` | `Admin@123` |
-| Customer | `user@orderhub.vn` | `User@123` |
+| Role     | Email               | Password    |
+| -------- | ------------------- | ----------- |
+| Admin    | `admin@orderhub.vn` | `Admin@123` |
+| Customer | `user@orderhub.vn`  | `User@123`  |
 
 Change these before deploying to any shared environment.
 
