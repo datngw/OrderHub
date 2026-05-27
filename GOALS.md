@@ -33,7 +33,6 @@
 - [x] POST /api/auth/logout — revoke refresh token in DB
 - [x] JWT token service + Refresh token service
 - [x] Role-based auth ([Authorize(Roles = "Admin")], [Authorize])
-- [ ] Custom auth: "owner or admin" for GET /api/orders/{id}
 
 ### Product API (P0)
 
@@ -75,7 +74,7 @@
   - [ ] Invalidate report cache
   - [ ] Return OrderId + status in response DTO
 - [ ] GET /api/orders/me — current user's orders, paginated
-- [ ] GET /api/orders/{id} — owner or admin only
+- [ ] GET /api/orders/{id} — owner or admin only (custom authorization policy)
 - [ ] PUT /api/orders/{id}/status — Admin transitions: Pending→Confirmed→Shipped→Delivered (validate allowed transitions)
 - [ ] POST /api/orders/{id}/cancel — only Pending status, restore stock in transaction
 - [ ] Separate request/response DTOs for all endpoints
