@@ -3,15 +3,15 @@ services:
     image: postgres:16-alpine
     container_name: orderhub-db
     environment:
-      POSTGRES_DB: orderhub
-      POSTGRES_USER: orderhub
-      POSTGRES_PASSWORD: orderhub_secret
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     ports:
       - "5432:5432"
     volumes:
       - orderhub-db-data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U orderhub -d orderhub"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -21,8 +21,8 @@ services:
     image: dpage/pgadmin4:latest
     container_name: orderhub-pgadmin
     environment:
-      PGADMIN_DEFAULT_EMAIL: admin@orderhub.dev
-      PGADMIN_DEFAULT_PASSWORD: admin
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}
     ports:
       - "5050:80"
     depends_on:
@@ -38,8 +38,8 @@ services:
       - "5000:8080"
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
-      - ConnectionStrings__DefaultConnection=Host=orderhub-db;Port=5432;Database=orderhub;Username=orderhub;Password=orderhub_secret
-      - Jwt__Key=${JWT_KEY:-super_secret_key_change_in_production_min_32_chars!!}
+      - ConnectionStrings__DefaultConnection=Host=orderhub-db;Port=5432;Database=${POSTGRES_DB};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
+      - Jwt__Key=${JWT_KEY}
       - Jwt__Issuer=OrderHub
       - Jwt__Audience=OrderHub
       - Jwt__AccessTokenMinutes=15
