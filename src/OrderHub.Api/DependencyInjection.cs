@@ -13,7 +13,7 @@ using Microsoft.OpenApi;
 using NetEscapades.AspNetCore.SecurityHeaders;
 using OrderHub.Api.Common;
 using OrderHub.Api.Middlewares;
-using OrderHub.Application.Features.Auth;
+using OrderHub.Application.Common.Security;
 using Scalar.AspNetCore;
 using Serilog;
 

@@ -1,7 +1,7 @@
 using OrderHub.Application.Common.Messaging;
-using OrderHub.Application.Common.Results;
-using OrderHub.Application.Features.Auth;
+using OrderHub.Application.Common.Security;
 using OrderHub.Application.Common.Persistence;
+using OrderHub.Domain.Common;
 using OrderHub.Domain.Users;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;

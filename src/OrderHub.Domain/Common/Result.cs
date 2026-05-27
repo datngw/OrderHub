@@ -1,4 +1,4 @@
-namespace OrderHub.Application.Common.Results;
+namespace OrderHub.Domain.Common;
 
 public class Result<T>
 {

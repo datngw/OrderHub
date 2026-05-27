@@ -1,6 +1,6 @@
 using OrderHub.Api;
 using OrderHub.Application;
-using OrderHub.Application.Features.Auth;
+using OrderHub.Application.Common.Security;
 using OrderHub.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);

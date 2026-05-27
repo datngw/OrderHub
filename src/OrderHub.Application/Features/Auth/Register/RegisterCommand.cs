@@ -1,5 +1,5 @@
 using OrderHub.Application.Common.Messaging;
-using OrderHub.Application.Features.Auth;
+using OrderHub.Application.Common.Security;
 
 namespace OrderHub.Application.Features.Auth.Register;
 

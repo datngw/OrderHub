@@ -4,7 +4,7 @@ using System.Security.Cryptography;
 using System.Text;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
-using OrderHub.Application.Features.Auth;
+using OrderHub.Application.Common.Security;
 
 namespace OrderHub.Infrastructure.Services;
 

@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 using OrderHub.Api.Common;
 using OrderHub.Api.Endpoints.Products.Requests;
 using OrderHub.Application.Common.Pagination;
-using OrderHub.Application.Common.Results;
+using OrderHub.Domain.Common;
 using OrderHub.Application.Features.Products;
 using OrderHub.Application.Features.Products.CreateProduct;
 using OrderHub.Application.Features.Products.DeleteProduct;

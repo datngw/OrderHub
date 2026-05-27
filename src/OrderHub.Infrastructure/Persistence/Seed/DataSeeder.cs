@@ -1,4 +1,4 @@
-using OrderHub.Application.Features.Auth;
+using OrderHub.Application.Common.Security;
 using OrderHub.Domain.Products;
 using OrderHub.Domain.Users;
 

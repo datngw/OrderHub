@@ -1,6 +1,6 @@
 using Microsoft.Extensions.Options;
 
-namespace OrderHub.Application.Features.Auth;
+namespace OrderHub.Application.Common.Security;
 
 public sealed class JwtOptions
 {

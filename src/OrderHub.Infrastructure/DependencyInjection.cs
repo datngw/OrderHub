@@ -2,7 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
-using OrderHub.Application.Features.Auth;
+using OrderHub.Application.Common.Security;
 using OrderHub.Application.Common.Persistence;
 using OrderHub.Domain.Products;
 using OrderHub.Domain.Users;

@@ -1,4 +1,4 @@
-namespace OrderHub.Application.Features.Auth;
+namespace OrderHub.Application.Common.Security;
 
 public interface IPasswordHasher
 {

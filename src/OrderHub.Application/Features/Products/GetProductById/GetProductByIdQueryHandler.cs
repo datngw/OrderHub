@@ -1,9 +1,8 @@
 using Mapster;
 using OrderHub.Application.Common;
 using OrderHub.Application.Common.Messaging;
-using OrderHub.Application.Common.Results;
 using OrderHub.Application.Features.Products;
-
+using OrderHub.Domain.Common;
 using OrderHub.Domain.Products;
 
 namespace OrderHub.Application.Features.Products.GetProductById;

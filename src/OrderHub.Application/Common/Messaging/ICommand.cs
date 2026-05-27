@@ -1,5 +1,5 @@
 using MediatR;
-using OrderHub.Application.Common.Results;
+using OrderHub.Domain.Common;
 
 namespace OrderHub.Application.Common.Messaging;
 
