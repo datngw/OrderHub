@@ -14,6 +14,7 @@
 - [x] Product Catalog — CRUD (Admin-only, soft delete), paginated list with filter/search/sort, CQRS + FluentValidation + Mapster
 - [x] Cross-Cutting Concerns — Serilog, global exception handler (RFC 9457 ProblemDetails), Result pattern for business errors, security headers, output caching, response compression, CORS, rate limiting, API versioning, Scalar + Swashbuckle docs, request timeouts
 - [x] Containerization — Multi-stage Dockerfile, docker-compose (App + PostgreSQL), .dockerignore
+- [x] Password complexity (uppercase, lowercase, digit, special char) + JWT key >= 32 chars validation
 
 ---
 
@@ -46,72 +47,78 @@
 
 ## Phase 3 — Production Readiness
 
-> **Objective:** API documentation, code quality audit, and project docs.
+> **Objective:** API documentation, code quality, observability, performance, security hardening, and project docs.
 
 ### API Documentation (P0)
 
-- [ ] OpenAPI spec with example request/response for every endpoint
+- [ ] OpenAPI spec with example request/response for every endpoint + `OrderHub.http` file covering all endpoints
 - [ ] Scalar UI with JWT authorize button
-- [ ] `OrderHub.http` file covering all endpoints
 
 ### Code Quality Audit (P0)
 
-- [ ] Business logic in handlers only, no endpoint logic
-- [ ] DI scopes correct (Scoped for DbContext/Handlers/TokenService, Singleton for Cache)
-- [ ] All I/O async, no hardcoded secrets, no PII in logs
+- [ ] Business logic in handlers only, DI scopes correct, all I/O async, no hardcoded secrets, no PII in logs
 - [ ] Proper logging levels — Info (create/cancel), Warning (out-of-stock), Error (exceptions)
 
 ### Documentation (P0)
 
-- [ ] Docusaurus site with arc42 architecture docs
-- [ ] Getting Started guide (quick start, seed accounts, docker-compose)
+- [ ] Docusaurus site with arc42 architecture docs + Getting Started guide (quick start, seed accounts, docker-compose)
 - [ ] README.md with quick start + link to docs
 
 ### Observability — Serilog + OpenTelemetry + Jaeger (P0)
 
-- [ ] Add OpenTelemetry SDK — Tracing (ASP.NET Core, EF Core, HttpClient auto-instrumentation) + Metrics (runtime + custom business meters)
-- [ ] Configure `Serilog.Sinks.OpenTelemetry` — Export structured logs via OTLP with trace/span correlation
-- [ ] Configure `Serilog.Enrichers.Span` — Auto-attach `TraceId` + `SpanId` to all log entries
-- [ ] Custom `ActivitySource` — `OrderHub.Orders`, `OrderHub.Products`, `OrderHub.Auth` for business-level spans
-- [ ] Custom `Meter` — `orders.created`, `orders.cancelled`, `stock.oversell_attempts`, `order.creation.duration_ms`
-- [ ] Add Jaeger to `docker-compose.yml` (OTLP receiver on port 4317, UI on port 16686)
-- [ ] Add `OTEL_*` env vars to `docker-compose.yml` + `.env.example`
-- [ ] OpenTelemetry config section in `appsettings.json` (enable/disable per environment, sampling rate)
+- [ ] OpenTelemetry SDK — Tracing (ASP.NET Core, EF Core, HttpClient auto-instrumentation) + Metrics (runtime + custom business meters: `orders.created`, `orders.cancelled`, `stock.oversell_attempts`, `order.creation.duration_ms`)
+- [ ] Serilog OTLP export — `Serilog.Sinks.OpenTelemetry` + `Serilog.Enrichers.Span` for TraceId/SpanId correlation in all log entries
+- [ ] Jaeger + Docker config — Jaeger container in `docker-compose.yml` (OTLP port 4317, UI port 16686), `OTEL_*` env vars, `appsettings.json` OpenTelemetry section (enable/disable per environment, sampling rate)
 
 > **Tech Stack:** Serilog (structured logging) + OpenTelemetry SDK (traces + metrics) + Jaeger (visualization) via OTLP export
+
+### Performance — Database & Query Optimization (P0)
+
+- [ ] **Connection pooling + Query optimization** — Npgsql pooling (`Pooling=true;MinPoolSize=5;MaxPoolSize=100`), `EnableRetryOnFailure()`, `AsNoTracking()` on all read queries, `AsSplitQuery()` on Order includes
+- [ ] **Query completeness** — Migration thêm indexes thiếu (`Orders.Status`, `OrderItems.OrderId`, `OrderItems.ProductId`); verify all list endpoints return `PagedResult<T>`
+
+### Security Hardening (P0)
+
+- [x] Password complexity (uppercase, lowercase, digit, special char) + JWT key >= 32 chars
+- [ ] **Per-endpoint rate limiting** — Stricter limits cho auth endpoints: login 5 req/min, register 3 req/min, refresh 10 req/min; separate policy cho admin endpoints
+- [ ] **Request size limiting + input sanitization** — Global `RequestSizeLimit` (100KB), HTML sanitization cho string fields (Name, Description) prevent stored XSS
 
 ### Stretch Goals (P2)
 
 - [ ] Idempotency key for order creation
 - [ ] Outbox pattern for OrderCreated event
+- [ ] Redis distributed cache — Redis container in docker-compose, `AddStackExchangeRedisOutputCache` replacing in-memory cache khi cần multi-instance scaling
 - [ ] GitHub Actions CI pipeline
 
 ---
 
 ## Acceptance Criteria
 
-| #   | Criteria                                                                     | Priority | Status |
-| --- | ---------------------------------------------------------------------------- | -------- | ------ |
-| 1   | `docker-compose up` → app + DB running, Swagger accessible                   | P0       | [x]    |
-| 2   | Register + Login → JWT + refresh token                                       | P0       | [x]    |
-| 3   | CRUD products (Admin only)                                                   | P0       | [x]    |
-| 4   | Product list with pagination, filter, search, sort                           | P0       | [x]    |
-| 5   | Create order with atomic stock deduction + price snapshot                    | P0       | [ ]    |
-| 6   | No oversell under concurrency (50 req / stock=10)                            | P0       | [ ]    |
-| 7   | Cancel order restores stock (Pending only)                                   | P0       | [ ]    |
-| 8   | Admin order status transitions (Confirmed/Shipped/Delivered)                 | P0       | [ ]    |
-| 9   | Order history for current user (paginated)                                   | P0       | [ ]    |
-| 10  | Admin reports with caching + invalidation                                    | P1       | [ ]    |
-| 11  | Rate limiting on API endpoints                                               | P1       | [x]    |
+| #   | Criteria                                                                                         | Priority | Status |
+| --- | ------------------------------------------------------------------------------------------------ | -------- | ------ |
+| 1   | `docker-compose up` → app + DB running, Swagger accessible                                       | P0       | [x]    |
+| 2   | Register + Login → JWT + refresh token                                                           | P0       | [x]    |
+| 3   | CRUD products (Admin only)                                                                       | P0       | [x]    |
+| 4   | Product list with pagination, filter, search, sort                                               | P0       | [x]    |
+| 5   | Create order with atomic stock deduction + price snapshot                                        | P0       | [ ]    |
+| 6   | No oversell under concurrency (50 req / stock=10)                                                | P0       | [ ]    |
+| 7   | Cancel order restores stock (Pending only)                                                       | P0       | [ ]    |
+| 8   | Admin order status transitions (Confirmed/Shipped/Delivered)                                     | P0       | [ ]    |
+| 9   | Order history for current user (paginated)                                                       | P0       | [ ]    |
+| 10  | Admin reports with caching + invalidation                                                        | P1       | [ ]    |
+| 11  | Rate limiting on API endpoints (global + per-endpoint)                                           | P0       | [~]    |
 | 12  | Problem Details errors (RFC 9457) — Result pattern + GlobalExceptionHandler, no stack trace leak | P0       | [x]    |
-| 13  | Separate request/response DTOs (no entity exposure)                          | P0       | [x]    |
-| 14  | Unit test coverage ≥ 60% in Application layer                                | P0       | [ ]    |
-| 15  | Integration tests: login, create order, cancel order                         | P0       | [ ]    |
-| 16  | Concurrency test: 50 requests, stock=10, exactly 10 succeed                  | P0       | [ ]    |
-| 17  | Health check endpoint (liveness + readiness)                                 | P1       | [x]    |
-| 18  | Structured logging (Serilog: Info/Warning/Error)                             | P0       | [x]    |
-| 19  | Security headers + HTTPS                                                     | P0       | [x]    |
-| 20  | README with instructions, architecture, trade-offs                           | P0       | [ ]    |
-| 21  | OpenTelemetry traces exported to Jaeger (request → DB → response)            | P0       | [ ]    |
-| 22  | Business metrics visible in Jaeger (orders.created, stock.oversell_attempts) | P0       | [ ]    |
-| 23  | Log entries correlated with traces (TraceId + SpanId in Serilog output)      | P0       | [ ]    |
+| 13  | Separate request/response DTOs (no entity exposure)                                              | P0       | [x]    |
+| 14  | Unit test coverage ≥ 60% in Application layer                                                    | P0       | [ ]    |
+| 15  | Integration tests: login, create order, cancel order                                             | P0       | [ ]    |
+| 16  | Concurrency test: 50 requests, stock=10, exactly 10 succeed                                      | P0       | [ ]    |
+| 17  | Health check endpoint (liveness + readiness)                                                     | P1       | [x]    |
+| 18  | Structured logging (Serilog: Info/Warning/Error)                                                 | P0       | [x]    |
+| 19  | Security headers + HTTPS                                                                         | P0       | [x]    |
+| 20  | README with instructions, architecture, trade-offs                                               | P0       | [ ]    |
+| 21  | OpenTelemetry traces + business metrics exported to Jaeger via OTLP                              | P0       | [ ]    |
+| 22  | Serilog logs correlated with traces (TraceId + SpanId)                                           | P0       | [ ]    |
+| 23  | DB connection pooling + EF retry + AsNoTracking/SplitQuery on all queries                        | P0       | [ ]    |
+| 24  | Database indexes cover all query patterns + all list endpoints paginated                         | P0       | [ ]    |
+| 25  | Auth endpoints rate-limited separately (login 5/min, register 3/min)                             | P0       | [ ]    |
+| 26  | Request size limited globally, string inputs sanitized against XSS                               | P0       | [ ]    |
