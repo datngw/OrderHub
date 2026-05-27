@@ -1,149 +1,112 @@
-# OrderHub — Order Management API
+# OrderHub
 
-Central order management service for the OrderHub e-commerce platform. Built on .NET 8 with Clean Architecture, JWT authentication, product catalog, order management with concurrency control, admin reporting, and full observability via OpenTelemetry + Jaeger.
+Central order management API for an e-commerce platform — product catalog, order lifecycle with concurrency-safe stock control, admin reporting, and full observability. Built with .NET 8, Clean Architecture, and PostgreSQL.
 
 ---
 
-## Architecture Overview
+## Features
+
+- **Authentication** — JWT access tokens (15 min) + refresh tokens (7 days), role-based access (Admin / Customer)
+- **Product Catalog** — CRUD with soft delete, paginated list with filtering, search, and sorting
+- **Order Management** — Atomic creation with pessimistic locking (`SELECT ... FOR UPDATE`) to prevent overselling, price snapshots, status transitions, cancellation with stock restore
+- **Admin Reports** — Top products by revenue, revenue by day, output-cached with tag-based invalidation
+- **Observability** — Structured logging (Serilog), distributed tracing, custom business metrics, all via OpenTelemetry + Jaeger
+- **API Documentation** — Interactive Scalar UI with OpenAPI spec
+- **Production-Ready** — Rate limiting, response compression (Brotli + Gzip), security headers, health probes, API versioning
+
+---
+
+## Architecture
+
+Clean Architecture with strict layer dependencies — each layer only depends on the one below it.
 
 ```
-┌─────────────────────────────────────────────────────┐
-│                    Client / Frontend                 │
-└──────────────────────┬──────────────────────────────┘
-                       │ HTTPS
-┌──────────────────────▼──────────────────────────────┐
-│                  API Layer (Presentation)            │
-│   Minimal API Endpoints, Middleware, Filters, Scalar │
-└──────────────────────┬──────────────────────────────┘
-                       │
-┌──────────────────────▼──────────────────────────────┐
-│              Application Layer (Use Cases)           │
-│   Commands, Queries, Validators, DTOs, Interfaces   │
-│              (MediatR - CQRS Pattern)               │
-└──────────────────────┬──────────────────────────────┘
-                       │
-┌──────────────────────▼──────────────────────────────┐
-│             Infrastructure Layer                     │
-│   EF Core, Repositories, Auth, Cache, OTel Config   │
-└──────────────────────┬──────────────────────────────┘
-                       │
-┌──────────────────────▼──────────────────────────────┐
-│               Domain Layer (Core)                    │
-│   Entities, Value Objects, Enums, Interfaces        │
-│              (No external dependencies)              │
-└─────────────────────────────────────────────────────┘
+Api  →  Infrastructure  →  Application  →  Domain
 ```
 
-### Request Flow (Create Order)
+| Layer | Responsibility |
+|---|---|
+| **Domain** | Entities, enums, value objects, repository interfaces. Zero external dependencies. |
+| **Application** | MediatR commands/queries, FluentValidation, DTOs, Result pattern, handler interfaces. |
+| **Infrastructure** | EF Core, repository implementations, JWT auth, output caching, OpenTelemetry setup. |
+| **Api** | Minimal API endpoints, middleware, DI registration. Entry point only. |
 
-```
-Client → Minimal API Endpoint
-       → MediatR (CreateOrderCommand)
-       → Validator (FluentValidation)
-       → Handler:
-           1. Load products with row-level lock (SELECT FOR UPDATE)
-           2. Check stock availability
-           3. Calculate total server-side
-           4. Snapshot UnitPrice in OrderItem
-           5. Deduct stock atomically
-           6. Create order entity
-           7. Save via DbContext (single transaction)
-           8. Invalidate report cache
-           9. Record business metrics + trace spans
-       → Return OrderResponse DTO
-```
+Key patterns in use:
+
+- **CQRS via MediatR** — Separate commands and queries, pipeline behaviors for cross-cutting concerns
+- **Specific Repository + Unit of Work** — Focused interfaces per entity, explicit transaction boundaries
+- **Pessimistic Locking** — Row-level locks during order creation to guarantee stock correctness under concurrency
 
 ---
 
 ## Tech Stack
 
-| Component        | Choice                              | Reason                                            |
-| ---------------- | ----------------------------------- | ------------------------------------------------- |
-| Runtime          | .NET 8 (LTS)                        | Long-term support, performance improvements       |
-| Web Framework    | ASP.NET Core Minimal API            | Lightweight, delegate-based, no controllers       |
-| ORM              | EF Core 8 + Npgsql                  | Mature, LINQ, migration support, PostgreSQL native|
-| Database         | PostgreSQL                          | Open-source, row-level locking, JSON support      |
-| Auth             | JWT (15 min) + Refresh Token (7d)   | Stateless access, revocable refresh               |
-| Password Hash    | PasswordHasher<T> (ASP.NET Core)    | Built-in, PBKDF2 HMAC-SHA256, auto-upgradable     |
-| Validation       | FluentValidation                    | Complex rules, testable, separate from models     |
-| Mapping          | Mapster                             | Fast, compile-time, less boilerplate              |
-| CQRS             | MediatR                             | Decouple handlers, pipeline behaviors             |
-| Caching          | Output Caching                      | Built-in ASP.NET Core, tagged policies            |
-| Logging          | Serilog + OTLP Sink                 | Structured logging with trace correlation         |
-| Tracing          | OpenTelemetry SDK                   | Auto-instrumentation (ASP.NET Core, EF Core, HTTP)|
-| Metrics          | OpenTelemetry SDK                   | Runtime + custom business meters                  |
-| Tracing Backend  | Jaeger                              | Open-source, native OTLP, Docker-friendly         |
-| API Docs         | Scalar + Swashbuckle                | Interactive UI, OpenAPI spec                      |
-| API Versioning   | Asp.Versioning                      | URL segment strategy (/api/v1/...)                |
-| Security Headers | NetEscapades                        | HSTS, CSP, X-Frame-Options, etc.                  |
-| Compression      | Brotli + Gzip                       | Response compression                              |
-| Rate Limiting    | ASP.NET Core built-in               | Fixed window, 100 req/min                         |
-| Testing          | xUnit + FluentAssertions + Moq      | Integration tests via Testcontainers              |
-| Containerization | Docker + docker-compose             | Multi-stage build, App + PostgreSQL + Jaeger      |
+| Area | Technology |
+|---|---|
+| Runtime | .NET 8 (LTS) |
+| Database | PostgreSQL 16 |
+| ORM | EF Core 8 + Npgsql |
+| Auth | JWT + PasswordHasher\<T\> |
+| Validation | FluentValidation |
+| Mapping | Mapster |
+| CQRS | MediatR |
+| Caching | ASP.NET Core Output Caching |
+| Logging | Serilog → OTLP |
+| Tracing & Metrics | OpenTelemetry SDK |
+| Tracing UI | Jaeger |
+| API Docs | Scalar + Swashbuckle |
+| Versioning | Asp.Versioning (URL segment) |
+| Security | NetEscapades headers, rate limiting |
+| Testing | xUnit + FluentAssertions + Moq + Testcontainers |
+| Containers | Docker + docker-compose |
 
 ---
 
-## Observability Stack
-
-All telemetry signals are exported via **OTLP** to Jaeger (included in docker-compose).
-
-| Signal   | Source                           | What You See in Jaeger                        |
-| -------- | -------------------------------- | --------------------------------------------- |
-| Traces   | ASP.NET Core, EF Core, HttpClient | Request → Handler → DB query → Response flow  |
-| Traces   | Custom ActivitySource            | Business spans: CreateOrder, CancelOrder, etc.|
-| Metrics  | Runtime instrumentation          | GC, thread pool, HTTP request duration        |
-| Metrics  | Custom Meter                     | orders.created, stock.oversell_attempts, etc.  |
-| Logs     | Serilog → OTLP                   | Structured logs with TraceId + SpanId          |
-
----
-
-## Solution Structure
-
-```
-OrderHub/
-├── src/
-│   ├── OrderHub.Domain/           # Entities, Enums, Value Objects, Interfaces
-│   ├── OrderHub.Application/      # Commands, Queries, Handlers, Validators, DTOs
-│   ├── OrderHub.Infrastructure/   # EF Core, Repositories, Auth, Cache, OTel Config
-│   └── OrderHub.Api/              # Minimal API Endpoints, Middleware, Program.cs
-├── tests/
-│   ├── OrderHub.UnitTests/        # Application layer unit tests
-│   └── OrderHub.IntegrationTests/ # WebApplicationFactory + Testcontainers
-├── Directory.Build.props
-├── OrderHub.slnx
-├── docker-compose.yml
-├── Dockerfile
-└── OrderHub.http                  # HTTP test file for all endpoints
-```
-
----
-
-## Quick Start
+## Getting Started
 
 ### Prerequisites
 
-- .NET 8 SDK
-- Docker & Docker Compose
-- (Optional) PostgreSQL 16 if running without Docker
+- [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0)
+- [Docker](https://www.docker.com/get-started) (for PostgreSQL, Jaeger, or running the full stack)
+- Optional: PostgreSQL 16 if running the database locally without Docker
 
-### Run with Docker (recommended)
+### Run with Docker Compose
+
+The easiest way to get everything running — API, PostgreSQL, pgAdmin, and Jaeger:
 
 ```bash
+# Clone and configure
+git clone <repo-url>
+cd OrderHub
+cp .env.example .env
+# Edit .env with your own secrets
+
+# Start all services
 docker-compose up --build
 ```
 
-Services:
-- **API**: `https://localhost:8080` — Scalar UI at `/scalar/v1`
-- **Jaeger UI**: `http://localhost:16686` — Traces & metrics dashboard
+| Service | URL |
+|---|---|
+| API | `http://localhost:5000` |
+| Scalar UI | `http://localhost:5000/scalar/v1` |
+| pgAdmin | `http://localhost:5050` |
 
-### Run Locally (without Docker)
+### Run Locally
 
 ```bash
-# Set connection string via user secrets
-dotnet user-secrets set "ConnectionStrings:DefaultConnection" "Host=localhost;Database=orderhub;Username=postgres;Password=postgres" --project src/OrderHub.Api
+# Restore and build
+dotnet build OrderHub.slnx
 
-dotnet ef database update --project src/OrderHub.Infrastructure --startup-project src/OrderHub.Api
+# Apply migrations (set connection string first)
+dotnet user-secrets set "ConnectionStrings:DefaultConnection" \
+  "Host=localhost;Database=orderhub;Username=postgres;Password=postgres" \
+  --project src/OrderHub.Api
 
+dotnet ef database update \
+  --project src/OrderHub.Infrastructure \
+  --startup-project src/OrderHub.Api
+
+# Run the API
 dotnet run --project src/OrderHub.Api
 ```
 
@@ -156,115 +119,157 @@ dotnet test OrderHub.slnx
 # Unit tests only
 dotnet test tests/OrderHub.UnitTests
 
-# Integration tests only (requires Docker for Testcontainers)
+# Integration tests (requires Docker for Testcontainers)
 dotnet test tests/OrderHub.IntegrationTests
 
-# With coverage
+# With coverage report
 dotnet test --collect:"XPlat Code Coverage"
 ```
 
 ---
 
-## Sample Accounts
+## Configuration
 
-| Role     | Email             | Password  |
-| -------- | ----------------- | --------- |
-| Admin    | admin@orderhub.vn | Admin@123 |
-| Customer | user@orderhub.vn  | User@123  |
+Copy `.env.example` to `.env` and fill in your values:
 
-> Passwords are seeded on first migration. Change in production.
+```env
+POSTGRES_DB=orderhub
+POSTGRES_USER=orderhub
+POSTGRES_PASSWORD=<your-strong-password>
+
+PGADMIN_DEFAULT_EMAIL=admin@orderhub.dev
+PGADMIN_DEFAULT_PASSWORD=<your-admin-password>
+
+JWT_KEY=<your-min-32-char-secret>
+```
+
+When running locally without Docker, use .NET User Secrets or environment variables for sensitive settings. Never commit secrets to source control.
 
 ---
 
-## API Endpoints Summary
+## API Endpoints
 
 ### Auth
 
-| Method | Endpoint                  | Auth | Description          |
-| ------ | ------------------------- | ---- | -------------------- |
-| POST   | /api/v1/auth/register     | No   | Register new user    |
-| POST   | /api/v1/auth/login        | No   | Login, get tokens    |
-| POST   | /api/v1/auth/refresh      | No   | Refresh access token |
-| POST   | /api/v1/auth/logout       | Yes  | Revoke refresh token |
+| Method | Endpoint | Auth | Description |
+|---|---|---|---|
+| POST | `/api/v1/auth/register` | No | Register a new user |
+| POST | `/api/v1/auth/login` | No | Login, receive tokens |
+| POST | `/api/v1/auth/refresh` | No | Refresh access token |
+| POST | `/api/v1/auth/logout` | Yes | Revoke refresh token |
 
-### Products (Catalog)
+### Products
 
-| Method | Endpoint                   | Auth  | Description      |
-| ------ | -------------------------- | ----- | ---------------- |
-| GET    | /api/v1/products           | No    | List (paginated, filterable, sortable) |
-| GET    | /api/v1/products/{id}      | No    | Get detail       |
-| POST   | /api/v1/products           | Admin | Create product   |
-| PUT    | /api/v1/products/{id}      | Admin | Update product   |
-| DELETE | /api/v1/products/{id}      | Admin | Soft delete      |
+| Method | Endpoint | Auth | Description |
+|---|---|---|---|
+| GET | `/api/v1/products` | No | List products (paginated, filterable, sortable) |
+| GET | `/api/v1/products/{id}` | No | Get product detail |
+| POST | `/api/v1/products` | Admin | Create product |
+| PUT | `/api/v1/products/{id}` | Admin | Update product |
+| DELETE | `/api/v1/products/{id}` | Admin | Soft delete product |
 
 ### Orders
 
-| Method | Endpoint                         | Auth           | Description                                 |
-| ------ | -------------------------------- | -------------- | ------------------------------------------- |
-| POST   | /api/v1/orders                   | Customer/Admin | Create order (atomic stock deduction)       |
-| GET    | /api/v1/orders/me                | Customer/Admin | My orders (paginated)                       |
-| GET    | /api/v1/orders/{id}              | Customer/Admin | Order detail (owner or admin)               |
-| PUT    | /api/v1/orders/{id}/status       | Admin          | Update status (Confirmed/Shipped/Delivered) |
-| POST   | /api/v1/orders/{id}/cancel       | Customer/Admin | Cancel order (Pending only)                 |
+| Method | Endpoint | Auth | Description |
+|---|---|---|---|
+| POST | `/api/v1/orders` | Customer+ | Create order (atomic stock deduction) |
+| GET | `/api/v1/orders/me` | Customer+ | Current user's orders (paginated) |
+| GET | `/api/v1/orders/{id}` | Customer+ | Order detail (owner or admin) |
+| PUT | `/api/v1/orders/{id}/status` | Admin | Update order status |
+| POST | `/api/v1/orders/{id}/cancel` | Customer+ | Cancel order (Pending only, restores stock) |
 
 ### Admin Reports
 
-| Method | Endpoint                                | Auth  | Description            |
-| ------ | --------------------------------------- | ----- | ---------------------- |
-| GET    | /api/v1/admin/reports/top-products      | Admin | Top 10 by revenue      |
-| GET    | /api/v1/admin/reports/revenue-by-day    | Admin | Revenue grouped by day |
+| Method | Endpoint | Auth | Description |
+|---|---|---|---|
+| GET | `/api/v1/admin/reports/top-products` | Admin | Top 10 products by revenue |
+| GET | `/api/v1/admin/reports/revenue-by-day` | Admin | Revenue aggregated by day |
 
 ### Health
 
-| Method | Endpoint        | Description          |
-| ------ | --------------- | -------------------- |
-| GET    | /health         | Liveness probe       |
-| GET    | /health/ready   | Readiness probe      |
+| Method | Endpoint | Description |
+|---|---|---|
+| GET | `/health` | Liveness probe |
+| GET | `/health/ready` | Readiness probe (checks DB connection) |
 
 ---
 
-## Assumptions
+## Observability
 
-1. **Single service** — OrderHub is one service, not microservices. No inter-service communication needed.
-2. **Single currency** — All prices in VND. No multi-currency for MVP.
-3. **No payment integration** — Orders are created without payment flow. Payment will be a separate integration later.
-4. **No shipping integration** — Order status updates are manual via API (Admin calls PUT /api/v1/orders/{id}/status).
-5. **Single device session** — Each refresh token login revokes previous tokens for simplicity. Can extend to multiple sessions later.
-6. **Output Caching** — Built-in ASP.NET Core output caching with tagged policies. Redis upgrade path is straightforward when scaling to multiple instances.
-7. **Soft delete** — Products use soft delete (IsActive flag). Hard delete for orders is never allowed.
-8. **Category as string** — Product.Category is a plain string (e.g. "Electronics", "Clothing"). No separate Category table for MVP.
-9. **Price snapshot in OrderItem** — UnitPrice stored at order creation time. Past orders keep original prices regardless of product changes.
-10. **Specific Repository + Unit of Work** — Each entity has its own repository interface in Domain, implemented in Infrastructure. IUnitOfWork wraps SaveChanges and transactions.
+All telemetry is exported via **OTLP** to Jaeger.
+
+| Signal | Source | Examples |
+|---|---|---|
+| Traces | ASP.NET Core, EF Core, custom ActivitySource | Request → Handler → DB → Response |
+| Metrics | Runtime instrumentation, custom Meter | `orders.created`, `stock.oversell_attempts`, request duration |
+| Logs | Serilog → OTLP sink | Structured logs with `TraceId` + `SpanId` correlation |
 
 ---
 
-## Trade-offs & Decisions
+## Solution Structure
 
-1. **PostgreSQL over SQL Server** — Open-source, no licensing cost. Row-level locking via `SELECT ... FOR UPDATE` is mature. Better JSON support for future extensibility.
-2. **Pessimistic locking (SELECT FOR UPDATE) for stock** — Under high concurrency, optimistic locking would cause many retry failures. Pessimistic lock ensures correctness at the cost of slightly lower throughput. For commerce, oversell is worse than a few milliseconds of lock wait.
-3. **Mapster over AutoMapper** — Faster compile-time code generation, less reflection overhead at runtime.
-4. **Output Caching over IMemoryCache/Redis** — Built-in ASP.NET Core with tagged policies for granular invalidation. Simpler API than IMemoryCache, fits single-instance deployment. Redis available when scaling.
-5. **PasswordHasher<T> over BCrypt** — Built-in ASP.NET Core, no external dependency, auto-upgradable hash format. PBKDF2 with HMAC-SHA256 is sufficient for this scale.
-6. **MediatR CQRS** — Commands and queries for clean handler organization, pipeline behaviors for cross-cutting concerns. No full event sourcing — not justified at this scale.
-7. **Specific Repository + Unit of Work** — Each entity gets its own focused repository interface. More explicit than generic repository, easier to test and evolve. IUnitOfWork wraps transaction boundaries.
-8. **Serilog + OpenTelemetry over pure OTel logging** — Serilog provides rich structured logging with mature sink ecosystem. OpenTelemetry SDK adds vendor-neutral tracing and metrics. `Serilog.Sinks.OpenTelemetry` bridges both worlds via OTLP, so all signals go to one backend (Jaeger).
-9. **Jaeger over Seq/Application Insights** — Open-source, native OTLP support, purpose-built for distributed tracing. Lightweight Docker container, no licensing cost.
+```
+OrderHub/
+├── src/
+│   ├── OrderHub.Domain/           # Entities, enums, interfaces
+│   ├── OrderHub.Application/      # Commands, queries, handlers, validators, DTOs
+│   ├── OrderHub.Infrastructure/   # EF Core, repositories, auth, caching, OTel
+│   └── OrderHub.Api/              # Endpoints, middleware, Program.cs
+├── tests/
+│   ├── OrderHub.UnitTests/        # Handler and validator tests
+│   └── OrderHub.IntegrationTests/ # WebApplicationFactory + Testcontainers
+├── docker-compose.yml
+├── Dockerfile
+├── .env.example
+├── OrderHub.slnx
+└── OrderHub.http                  # HTTP request file for all endpoints
+```
 
 ---
 
-## Future Improvements
+## Design Decisions
 
-- Idempotency keys for POST /api/v1/orders
+| Decision | Rationale |
+|---|---|
+| PostgreSQL over SQL Server | Open-source, mature row-level locking, no licensing cost |
+| Pessimistic locking for stock | Guarantees no oversell under concurrency; correctness over throughput |
+| Mapster over AutoMapper | Compile-time code generation, less runtime reflection |
+| Output Caching over Redis | Built into ASP.NET Core, tagged policies for granular invalidation; Redis available when scaling |
+| PasswordHasher\<T\> over BCrypt | Built-in ASP.NET Core, auto-upgradable hash format, no external dependency |
+| Specific Repository + Unit of Work | Focused contracts per entity, explicit transaction boundaries, easier to test |
+| Serilog + OpenTelemetry | Serilog for structured logging maturity; OpenTelemetry SDK for vendor-neutral tracing and metrics |
+| Jaeger over Seq/App Insights | Open-source, native OTLP, lightweight Docker container |
+
+---
+
+## Seed Data
+
+On first migration, two accounts are seeded for testing:
+
+| Role | Email | Password |
+|---|---|---|
+| Admin | `admin@orderhub.vn` | `Admin@123` |
+| Customer | `user@orderhub.vn` | `User@123` |
+
+Change these before deploying to any shared environment.
+
+---
+
+## Roadmap
+
+See [GOALS.md](./GOALS.md) for the full phased implementation roadmap and acceptance criteria.
+
+Planned improvements:
+
+- Idempotency keys for order creation
 - Outbox pattern for OrderCreated events
 - GitHub Actions CI/CD pipeline
-- Redis for distributed caching (multi-instance ready)
-- Background job: auto-confirm orders after 5 minutes
+- Redis for distributed caching (multi-instance)
+- Background jobs for auto-confirming orders
 - Per-user rate limiting
-- Database read replicas for report queries
-- BenchmarkDotNet for hot paths
 
 ---
 
 ## License
 
-Proprietary — OrderHub Internal
+Proprietary — Internal use only.
