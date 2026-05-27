@@ -1,14 +1,20 @@
 using System.Text;
+using Asp.Versioning;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.AspNetCore.OutputCaching;
+using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
-using Microsoft.OpenApi.Models;
+using Microsoft.OpenApi;
+using NetEscapades.AspNetCore.SecurityHeaders;
 using OrderHub.Api.Common;
-using OrderHub.Api.Middleware;
+using OrderHub.Api.Middlewares;
 using OrderHub.Application.Features.Auth;
+using Scalar.AspNetCore;
 using Serilog;
 
 namespace OrderHub.Api;
@@ -17,6 +23,9 @@ public static class DependencyInjection
 {
     public static IServiceCollection AddApiServices(this IServiceCollection services, IConfiguration configuration)
     {
+        services.AddExceptionHandler<GlobalExceptionHandler>();
+        services.AddProblemDetails();
+
         services.AddEndpointsApiExplorer();
         services.AddSwaggerGen(c =>
         {
@@ -26,18 +35,42 @@ public static class DependencyInjection
                 Description = "JWT Authorization header using the Bearer scheme. Example: \"Bearer {token}\"",
                 Name = "Authorization",
                 In = ParameterLocation.Header,
-                Type = SecuritySchemeType.ApiKey,
-                Scheme = "Bearer"
+                Type = SecuritySchemeType.Http,
+                Scheme = "bearer"
             });
-            c.AddSecurityRequirement(new OpenApiSecurityRequirement
+            c.AddSecurityRequirement(_ => new OpenApiSecurityRequirement
             {
                 {
-                    new OpenApiSecurityScheme
-                    {
-                        Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "Bearer" }
-                    },
-                    Array.Empty<string>()
+                    new OpenApiSecuritySchemeReference("Bearer"),
+                    new List<string>()
                 }
+            });
+        });
+
+        services.AddApiVersioning(options =>
+        {
+            options.DefaultApiVersion = new ApiVersion(1);
+            options.AssumeDefaultVersionWhenUnspecified = true;
+            options.ReportApiVersions = true;
+            options.ApiVersionReader = new UrlSegmentApiVersionReader();
+        });
+
+        services.AddRateLimiter(options =>
+        {
+            options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+        });
+
+        services.AddCors(options =>
+        {
+            options.AddPolicy("Default", policy =>
+            {
+                var allowedOrigins = configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
+                    ?? ["http://localhost:3000"];
+
+                policy.WithOrigins(allowedOrigins)
+                    .AllowAnyHeader()
+                    .AllowAnyMethod()
+                    .AllowCredentials();
             });
         });
 
@@ -64,25 +97,77 @@ public static class DependencyInjection
         services.AddAuthorizationBuilder()
             .AddPolicy(AuthorizationPolicies.Policies.AdminOnly, policy => policy.RequireRole(AuthorizationPolicies.Roles.Admin));
 
+        services.AddHealthChecks()
+            .AddNpgSql(configuration.GetConnectionString("DefaultConnection")!, name: "postgresql", tags: ["ready"]);
+
+        services.AddRequestTimeouts();
+
+        services.AddOutputCache(options =>
+        {
+            options.AddBasePolicy(policy => policy.Expire(TimeSpan.FromMinutes(5)));
+            options.AddPolicy("products", policy =>
+                policy.Expire(TimeSpan.FromMinutes(5)).Tag("products"));
+        });
+
+        services.AddResponseCompression(options =>
+        {
+            options.EnableForHttps = true;
+            options.Providers.Add<BrotliCompressionProvider>();
+            options.Providers.Add<GzipCompressionProvider>();
+        });
+
+        var securityHeadersPolicy = new HeaderPolicyCollection()
+            .AddContentTypeOptionsNoSniff()
+            .AddFrameOptionsDeny()
+            .AddStrictTransportSecurityMaxAgeIncludeSubDomains(maxAgeInSeconds: 60 * 60 * 24 * 365)
+            .AddReferrerPolicyStrictOriginWhenCrossOrigin()
+            .AddContentSecurityPolicy(builder =>
+            {
+                builder.AddDefaultSrc().Self();
+            })
+            .RemoveServerHeader();
+
+        services.AddSingleton(securityHeadersPolicy);
+
         return services;
     }
 
     public static WebApplication UseApiMiddleware(this WebApplication app)
     {
-        app.UseMiddleware<SecurityHeadersMiddleware>();
-        app.UseMiddleware<ExceptionHandlerMiddleware>();
+        app.UseForwardedHeaders();
+
+        app.UseSecurityHeaders(app.Services.GetRequiredService<HeaderPolicyCollection>());
+
+        app.UseExceptionHandler();
 
         if (app.Environment.IsDevelopment())
         {
             app.UseSwagger();
-            app.UseSwaggerUI();
+            app.MapScalarApiReference(options =>
+            {
+                options
+                    .WithTitle("OrderHub API")
+                    .WithDefaultHttpClient(ScalarTarget.CSharp, ScalarClient.HttpClient);
+            });
         }
 
         app.UseHttpsRedirection();
         app.UseHsts();
 
+        app.UseResponseCompression();
+        app.UseRateLimiter();
+        app.UseRequestTimeouts();
+        app.UseCors("Default");
+
         app.UseAuthentication();
         app.UseAuthorization();
+        app.UseOutputCache();
+
+        app.MapHealthChecks("/health");
+        app.MapHealthChecks("/health/ready", new HealthCheckOptions
+        {
+            Predicate = check => check.Tags.Contains("ready")
+        });
 
         app.MapEndpointGroups();
 
@@ -92,7 +177,11 @@ public static class DependencyInjection
     public static WebApplicationBuilder ConfigureSerilog(this WebApplicationBuilder builder)
     {
         Log.Logger = new LoggerConfiguration()
-            .WriteTo.Console()
+            .Enrich.FromLogContext()
+            .Enrich.WithMachineName()
+            .Enrich.WithEnvironmentName()
+            .WriteTo.Console(
+                outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] [{SourceContext}] [{MachineName}] {Message:lj}{NewLine}{Exception}")
             .CreateLogger();
 
         builder.Host.UseSerilog();

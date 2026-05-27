@@ -9,6 +9,7 @@ using OrderHub.Domain.Users;
 using OrderHub.Infrastructure.Persistence;
 using OrderHub.Infrastructure.Persistence.Repositories;
 using OrderHub.Infrastructure.Services;
+using OrderHub.Infrastructure.BackgroundServices;
 
 namespace OrderHub.Infrastructure;
 
@@ -30,6 +31,8 @@ public static class DependencyInjection
 
         services.AddScoped<ITokenService, TokenService>();
         services.AddScoped<IPasswordHasher, PasswordHasher>();
+
+        services.AddHostedService<DatabaseMigrationHostedService>();
 
         return services;
     }

@@ -1,3 +1,5 @@
+using Asp.Versioning;
+using Asp.Versioning.Builder;
 using MediatR;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
@@ -15,18 +17,27 @@ public sealed class AuthEndpoints : IEndpointGroup
 {
     public static void MapGroup(IEndpointRouteBuilder endpoints)
     {
-        var group = endpoints.MapGroup("/api/auth").WithTags("Auth").WithOpenApi();
+        var versionSet = endpoints.NewApiVersionSet("auth")
+            .HasApiVersion(new ApiVersion(1))
+            .ReportApiVersions()
+            .Build();
+
+        var group = endpoints.MapGroup("/api/v{version:apiVersion}/auth")
+            .WithApiVersionSet(versionSet)
+            .WithTags("Auth");
 
         group.MapPost("/register", static async ([FromBody] RegisterRequest request, IMediator mediator, CancellationToken ct) =>
         {
             var result = await mediator.Send(new RegisterCommand(request.Email, request.Password, request.FullName), ct);
-            return result.ToCreatedResponse("/api/auth/login");
+            return result.ToCreatedResponse("/api/v1/auth/login");
         })
         .WithName("Register").WithSummary("Register a new user")
+        .HasApiVersion(new ApiVersion(1))
         .AllowAnonymous()
         .Produces<AuthResponse>(StatusCodes.Status201Created)
         .ProducesValidationProblem()
-        .ProducesProblem(StatusCodes.Status409Conflict);
+        .ProducesProblem(StatusCodes.Status409Conflict)
+        .ProducesProblem(StatusCodes.Status429TooManyRequests);
 
         group.MapPost("/login", static async ([FromBody] LoginRequest request, IMediator mediator, CancellationToken ct) =>
         {
@@ -34,10 +45,12 @@ public sealed class AuthEndpoints : IEndpointGroup
             return result.ToResponse();
         })
         .WithName("Login").WithSummary("Authenticate and get tokens")
+        .HasApiVersion(new ApiVersion(1))
         .AllowAnonymous()
         .Produces<AuthResponse>(StatusCodes.Status200OK)
         .ProducesValidationProblem()
-        .ProducesProblem(StatusCodes.Status401Unauthorized);
+        .ProducesProblem(StatusCodes.Status401Unauthorized)
+        .ProducesProblem(StatusCodes.Status429TooManyRequests);
 
         group.MapPost("/refresh", static async ([FromBody] RefreshTokenRequest request, IMediator mediator, CancellationToken ct) =>
         {
@@ -45,10 +58,12 @@ public sealed class AuthEndpoints : IEndpointGroup
             return result.ToResponse();
         })
         .WithName("RefreshToken").WithSummary("Refresh access token")
+        .HasApiVersion(new ApiVersion(1))
         .AllowAnonymous()
         .Produces<AuthResponse>(StatusCodes.Status200OK)
         .ProducesValidationProblem()
-        .ProducesProblem(StatusCodes.Status401Unauthorized);
+        .ProducesProblem(StatusCodes.Status401Unauthorized)
+        .ProducesProblem(StatusCodes.Status429TooManyRequests);
 
         group.MapPost("/logout", static async ([FromBody] RefreshTokenRequest request, IMediator mediator, CancellationToken ct) =>
         {
@@ -56,9 +71,11 @@ public sealed class AuthEndpoints : IEndpointGroup
             return result.ToNoContentResponse();
         })
         .WithName("Logout").WithSummary("Revoke refresh token")
-        .AllowAnonymous()
+        .HasApiVersion(new ApiVersion(1))
+        .RequireAuthorization()
         .Produces(StatusCodes.Status204NoContent)
         .ProducesValidationProblem()
-        .ProducesProblem(StatusCodes.Status401Unauthorized);
+        .ProducesProblem(StatusCodes.Status401Unauthorized)
+        .ProducesProblem(StatusCodes.Status429TooManyRequests);
     }
 }

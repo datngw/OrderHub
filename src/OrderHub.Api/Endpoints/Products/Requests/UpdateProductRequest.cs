@@ -1,4 +1,4 @@
-namespace OrderHub.Api.Features.Products.Requests;
+namespace OrderHub.Api.Endpoints.Products.Requests;
 
 public record UpdateProductRequest(
     string Name,
