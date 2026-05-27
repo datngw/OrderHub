@@ -1,21 +1,22 @@
+using OrderHub.Application.Features.Auth;
 using OrderHub.Domain.Products;
 using OrderHub.Domain.Users;
 
 namespace OrderHub.Infrastructure.Persistence.Seed;
 
-public static class DataSeeder
+public sealed class DataSeeder(IPasswordHasher passwordHasher)
 {
     private static readonly string[] Categories =
         ["Electronics", "Clothing", "Books", "Home & Garden", "Sports", "Toys", "Food", "Automotive", "Health", "Music"];
 
-    public static void Seed(OrderHubDbContext context)
+    public void Seed(OrderHubDbContext context)
     {
         if (context.Users.Any()) return;
 
         var admin = new User
         {
             Email = "admin@orderhub.com",
-            PasswordHash = BCrypt.Net.BCrypt.HashPassword("Admin@123"),
+            PasswordHash = passwordHasher.HashPassword("Admin@123"),
             FullName = "System Admin",
             Role = UserRoleEnum.Admin
         };
@@ -23,7 +24,7 @@ public static class DataSeeder
         var customer = new User
         {
             Email = "customer@orderhub.com",
-            PasswordHash = BCrypt.Net.BCrypt.HashPassword("Customer@123"),
+            PasswordHash = passwordHasher.HashPassword("Customer@123"),
             FullName = "John Doe",
             Role = UserRoleEnum.Customer
         };

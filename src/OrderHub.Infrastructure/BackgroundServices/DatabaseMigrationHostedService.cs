@@ -37,7 +37,8 @@ public sealed class DatabaseMigrationHostedService : IHostedService
                 _logger.LogInformation("Migrations applied successfully");
 
                 _logger.LogInformation("Seeding database...");
-                DataSeeder.Seed(dbContext);
+                var seeder = scope.ServiceProvider.GetRequiredService<DataSeeder>();
+                seeder.Seed(dbContext);
                 _logger.LogInformation("Database seeded successfully");
 
                 return;
