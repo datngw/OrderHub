@@ -86,7 +86,7 @@
   - Admin: 40 req/min (partition by userId / IP fallback)
   - Partition key: `User?.FindFirst(JwtRegisteredClaimNames.Sub)?.Value ?? Connection.RemoteIpAddress?.ToString() ?? "anonymous"`
   - Sliding window với 6 segments/window — không boundary burst
-- [ ] **Input sanitization** — HTML sanitization cho string fields (Name, Description) prevent stored XSS
+- [x] **Input sanitization** — HTML sanitization cho string fields (Name, Description) prevent stored XSS — `HtmlInputSanitizer` (Ganss.Xss) + `SanitizeHtmlEndpointFilter` auto-sanitizes all string props on request DTOs via reflection. Applied to Auth + Products endpoints. 12 unit tests covering script injection, iframe, event handlers, SVG XSS, mixed content.
 
 ### Stretch Goals (P2)
 
@@ -126,4 +126,4 @@
 | 23  | DB connection pooling + EF retry + AsNoTracking/SplitQuery on all queries                        | P0       | [x]    |
 | 24  | Database indexes cover all query patterns + all list endpoints paginated                         | P0       | [x]    |
 | 25  | Auth endpoints rate-limited separately (login 5/min, register 3/min)                             | P0       | [x]    | — Sliding window partitioned by IP |
-| 26  | String inputs sanitized against XSS                                                              | P0       | [ ]    |
+| 26  | String inputs sanitized against XSS                                                              | P0       | [x]    | — HtmlInputSanitizer (Ganss.Xss) + SanitizeHtmlEndpointFilter on Auth & Products endpoints, 12 unit tests |
