@@ -110,6 +110,8 @@ public static class DependencyInjection
             options.AddBasePolicy(policy => policy.Expire(TimeSpan.FromMinutes(5)));
             options.AddPolicy("products", policy =>
                 policy.Expire(TimeSpan.FromMinutes(5)).Tag("products"));
+            options.AddPolicy("reports", policy =>
+                policy.Expire(TimeSpan.FromMinutes(5)).Tag("reports"));
         });
 
         services.AddResponseCompression(options =>

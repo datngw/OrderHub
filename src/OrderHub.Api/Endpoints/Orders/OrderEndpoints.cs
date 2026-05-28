@@ -2,6 +2,7 @@ using Asp.Versioning;
 using MediatR;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.OutputCaching;
 using OrderHub.Api.Common;
 using OrderHub.Api.Endpoints.Orders.Requests;
 using OrderHub.Application.Common.Pagination;
@@ -67,11 +68,14 @@ public sealed class OrderEndpoints : IEndpointGroup
     }
 
     private static async Task<Results<Created<OrderResponse>, CustomProblemResult>> HandleCreateOrder(
-        [FromBody] CreateOrderRequest request, IMediator mediator, CancellationToken ct)
+        [FromBody] CreateOrderRequest request, IMediator mediator,
+        IOutputCacheStore cache, CancellationToken ct)
     {
         var command = new CreateOrderCommand(
             request.Items.Select(i => new CreateOrderItem(i.ProductId, i.Quantity)).ToList());
         var result = await mediator.Send(command, ct);
+        if (result.IsSuccess)
+            await cache.EvictByTagAsync("reports", ct);
         return result.ToCreatedResponse($"/api/v1/orders/{result.Value?.Id}");
     }
 
@@ -97,9 +101,11 @@ public sealed class OrderEndpoints : IEndpointGroup
     }
 
     private static async Task<Results<NoContent, CustomProblemResult>> HandleCancelOrder(
-        Guid id, IMediator mediator, CancellationToken ct)
+        Guid id, IMediator mediator, IOutputCacheStore cache, CancellationToken ct)
     {
         var result = await mediator.Send(new CancelOrderCommand(id), ct);
+        if (result.IsSuccess)
+            await cache.EvictByTagAsync("reports", ct);
         return result.ToNoContentResponse();
     }
 }
