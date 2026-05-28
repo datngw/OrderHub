@@ -1,7 +1,9 @@
+using Mapster;
 using OrderHub.Application.Common;
 using OrderHub.Application.Common.Messaging;
 using OrderHub.Application.Common.Persistence;
 using OrderHub.Application.Common.Security;
+using OrderHub.Application.Features.Orders;
 using OrderHub.Domain.Common;
 using OrderHub.Domain.Orders;
 using OrderHub.Domain.Products;
@@ -76,30 +78,12 @@ public sealed class CreateOrderCommandHandler(
             await unitOfWork.SaveChangesAsync(cancellationToken);
             await unitOfWork.CommitTransactionAsync(cancellationToken);
 
-            return MapToResponse(order);
+            return order.Adapt<OrderResponse>();
         }
         catch
         {
             await unitOfWork.RollbackTransactionAsync(cancellationToken);
             throw;
         }
-    }
-
-    private static OrderResponse MapToResponse(Order order)
-    {
-        return new OrderResponse(
-            order.Id,
-            order.UserId,
-            order.Status.ToString(),
-            order.TotalAmount,
-            order.Items.Select(i => new OrderItemResponse(
-                i.Id,
-                i.ProductId,
-                string.Empty,
-                i.Quantity,
-                i.UnitPrice,
-                i.UnitPrice * i.Quantity)).ToList(),
-            order.CreatedAt,
-            order.UpdatedAt);
     }
 }

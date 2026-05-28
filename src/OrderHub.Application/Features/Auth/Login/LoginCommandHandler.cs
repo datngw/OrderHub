@@ -1,6 +1,8 @@
+using Mapster;
 using OrderHub.Application.Common.Messaging;
 using OrderHub.Application.Common.Security;
 using OrderHub.Application.Common.Persistence;
+using OrderHub.Application.Features.Auth;
 using OrderHub.Domain.Common;
 using OrderHub.Domain.Users;
 using Microsoft.Extensions.Options;
@@ -35,6 +37,6 @@ public sealed class LoginCommandHandler(
         refreshTokenRepository.Add(refreshToken);
         await unitOfWork.SaveChangesAsync(cancellationToken);
 
-        return new AuthResponse(accessToken, refreshToken.Token, user.Email, user.FullName, user.Role.ToString());
+        return user.Adapt<AuthResponse>() with { AccessToken = accessToken, RefreshToken = refreshToken.Token };
     }
 }

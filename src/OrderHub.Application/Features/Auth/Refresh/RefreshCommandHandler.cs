@@ -1,6 +1,8 @@
+using Mapster;
 using OrderHub.Application.Common.Messaging;
 using OrderHub.Application.Common.Security;
 using OrderHub.Application.Common.Persistence;
+using OrderHub.Application.Features.Auth;
 using OrderHub.Domain.Common;
 using OrderHub.Domain.Users;
 using Microsoft.Extensions.Options;
@@ -47,7 +49,7 @@ public sealed class RefreshCommandHandler(
         var user = existingToken.User;
         var accessToken = tokenService.GenerateAccessToken(user.Id, user.Email, user.Role.ToString());
 
-        return new AuthResponse(accessToken, newRefreshToken.Token, user.Email, user.FullName, user.Role.ToString());
+        return user.Adapt<AuthResponse>() with { AccessToken = accessToken, RefreshToken = newRefreshToken.Token };
     }
 
     private async Task RevokeTokenFamilyAsync(RefreshToken revokedToken, CancellationToken cancellationToken)

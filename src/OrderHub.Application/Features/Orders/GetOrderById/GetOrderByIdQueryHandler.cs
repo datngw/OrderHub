@@ -1,3 +1,4 @@
+using Mapster;
 using OrderHub.Application.Common;
 using OrderHub.Application.Common.Messaging;
 using OrderHub.Application.Common.Security;
@@ -22,24 +23,6 @@ public sealed class GetOrderByIdQueryHandler(
         if (!userContext.IsAdmin && order.UserId != userContext.UserId)
             return Result<OrderResponse>.Failure(OrderErrors.Forbidden);
 
-        return MapToResponse(order);
-    }
-
-    private static OrderResponse MapToResponse(Order order)
-    {
-        return new OrderResponse(
-            order.Id,
-            order.UserId,
-            order.Status.ToString(),
-            order.TotalAmount,
-            order.Items.Select(i => new OrderItemResponse(
-                i.Id,
-                i.ProductId,
-                i.Product?.Name ?? string.Empty,
-                i.Quantity,
-                i.UnitPrice,
-                i.UnitPrice * i.Quantity)).ToList(),
-            order.CreatedAt,
-            order.UpdatedAt);
+        return order.Adapt<OrderResponse>();
     }
 }

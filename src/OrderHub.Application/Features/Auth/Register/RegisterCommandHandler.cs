@@ -1,6 +1,8 @@
+using Mapster;
 using OrderHub.Application.Common.Messaging;
 using OrderHub.Application.Common.Security;
 using OrderHub.Application.Common.Persistence;
+using OrderHub.Application.Features.Auth;
 using OrderHub.Domain.Common;
 using OrderHub.Domain.Users;
 using Microsoft.EntityFrameworkCore;
@@ -52,6 +54,6 @@ public sealed class RegisterCommandHandler(
 
         var accessToken = tokenService.GenerateAccessToken(user.Id, user.Email, user.Role.ToString());
 
-        return new AuthResponse(accessToken, refreshToken.Token, user.Email, user.FullName, user.Role.ToString());
+        return user.Adapt<AuthResponse>() with { AccessToken = accessToken, RefreshToken = refreshToken.Token };
     }
 }
