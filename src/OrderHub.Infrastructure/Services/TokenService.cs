@@ -29,7 +29,7 @@ public sealed class TokenService(IOptions<JwtOptions> jwtOptions, TimeProvider c
             issuer: _options.Issuer,
             audience: _options.Audience,
             claims: claims,
-            expires: clock.GetUtcNow().AddMinutes(_options.AccessTokenMinutes).DateTime,
+            expires: clock.GetUtcNow().AddMinutes(_options.AccessTokenMinutes).UtcDateTime,
             signingCredentials: credentials);
 
         return new JwtSecurityTokenHandler().WriteToken(token);

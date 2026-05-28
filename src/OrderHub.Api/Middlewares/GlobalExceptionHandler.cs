@@ -18,6 +18,7 @@ public sealed class GlobalExceptionHandler : IExceptionHandler
     {
         return exception switch
         {
+            BadHttpRequestException badRequestException => await HandleBadRequestExceptionAsync(httpContext, badRequestException, ct),
             ValidationException validationException => await HandleValidationExceptionAsync(httpContext, validationException, ct),
             DomainException domainException => await HandleDomainExceptionAsync(httpContext, domainException, ct),
             _ => await HandleUnexpectedExceptionAsync(httpContext, exception, ct)
@@ -67,6 +68,27 @@ public sealed class GlobalExceptionHandler : IExceptionHandler
         };
 
         httpContext.Response.StatusCode = statusCode;
+
+        await httpContext.Response.WriteAsJsonAsync(problemDetails, ct);
+
+        return true;
+    }
+
+    private async ValueTask<bool> HandleBadRequestExceptionAsync(
+        HttpContext httpContext, BadHttpRequestException exception, CancellationToken ct)
+    {
+        _logger.LogWarning(exception, "Bad request: {Message}", exception.Message);
+
+        var problemDetails = new CustomProblemDetails
+        {
+            Status = StatusCodes.Status400BadRequest,
+            Type = "BadRequest",
+            Title = "Bad request",
+            Detail = exception.InnerException?.Message ?? exception.Message,
+            TraceId = httpContext.TraceIdentifier
+        };
+
+        httpContext.Response.StatusCode = problemDetails.Status;
 
         await httpContext.Response.WriteAsJsonAsync(problemDetails, ct);
 

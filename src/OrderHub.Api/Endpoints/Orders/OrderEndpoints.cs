@@ -1,5 +1,4 @@
 using Asp.Versioning;
-using Asp.Versioning.Builder;
 using MediatR;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
