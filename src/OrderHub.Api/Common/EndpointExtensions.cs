@@ -18,4 +18,10 @@ public static class EndpointExtensions
 
         return app;
     }
+
+    public static RouteGroupBuilder WithHtmlSanitization(this RouteGroupBuilder group)
+    {
+        group.AddEndpointFilter<SanitizeHtmlEndpointFilter>();
+        return group;
+    }
 }

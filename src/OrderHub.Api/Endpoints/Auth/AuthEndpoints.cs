@@ -26,7 +26,8 @@ public sealed class AuthEndpoints : IEndpointGroup
 
         var group = endpoints.MapGroup("/api/v{version:apiVersion}/auth")
             .WithApiVersionSet(versionSet)
-            .WithTags("Auth");
+            .WithTags("Auth")
+            .WithHtmlSanitization();
 
         group.MapPost("/register", HandleRegister)
             .WithName("Register").WithSummary("Register a new user")

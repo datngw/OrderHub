@@ -1,6 +1,5 @@
 using FluentValidation.TestHelper;
 using OrderHub.Application.Features.Products.CreateProduct;
-using Xunit;
 
 namespace OrderHub.UnitTests.Features.Products.CreateProduct;
 
