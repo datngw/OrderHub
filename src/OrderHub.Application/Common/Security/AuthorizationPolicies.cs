@@ -1,4 +1,4 @@
-namespace OrderHub.Api.Common;
+namespace OrderHub.Application.Common.Security;
 
 public static class AuthorizationPolicies
 {

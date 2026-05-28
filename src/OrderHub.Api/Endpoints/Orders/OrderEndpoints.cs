@@ -3,6 +3,7 @@ using MediatR;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using OrderHub.Api.Common;
+using OrderHub.Application.Common.Security;
 using OrderHub.Api.Endpoints.Orders.Requests;
 using OrderHub.Application.Common.Pagination;
 using OrderHub.Application.Features.Orders;

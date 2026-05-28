@@ -1,32 +1,39 @@
-using System.Text;
 using Asp.Versioning;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.JsonWebTokens;
-using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
 using NetEscapades.AspNetCore.SecurityHeaders;
-using OrderHub.Api.Common;
 using OrderHub.Api.Middlewares;
-using OrderHub.Application.Common.Security;
 using Scalar.AspNetCore;
-using Serilog;
 using System.Threading.RateLimiting;
 
 namespace OrderHub.Api;
 
-public static class DependencyInjection
+public static class ApiServiceRegistration
 {
-    public static IServiceCollection AddApiServices(this IServiceCollection services, IConfiguration configuration)
+    public static IServiceCollection AddApiServices(
+        this IServiceCollection services, IConfiguration configuration)
+    {
+        AddErrorHandling(services);
+        AddSwagger(services);
+        AddApiVersioning(services);
+        AddRateLimiting(services);
+        AddCors(services, configuration);
+        AddSecurityAndCompression(services, configuration);
+        return services;
+    }
+
+    private static void AddErrorHandling(IServiceCollection services)
     {
         services.AddExceptionHandler<GlobalExceptionHandler>();
         services.AddProblemDetails();
+    }
 
+    private static void AddSwagger(IServiceCollection services)
+    {
         services.AddEndpointsApiExplorer();
         services.AddSwaggerGen(c =>
         {
@@ -47,7 +54,10 @@ public static class DependencyInjection
                 }
             });
         });
+    }
 
+    private static void AddApiVersioning(IServiceCollection services)
+    {
         services.AddApiVersioning(options =>
         {
             options.DefaultApiVersion = new ApiVersion(1);
@@ -55,7 +65,10 @@ public static class DependencyInjection
             options.ReportApiVersions = true;
             options.ApiVersionReader = new UrlSegmentApiVersionReader();
         });
+    }
 
+    private static void AddRateLimiting(IServiceCollection services)
+    {
         services.AddRateLimiter(options =>
         {
             options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
@@ -138,7 +151,10 @@ public static class DependencyInjection
                 });
             });
         });
+    }
 
+    private static void AddCors(IServiceCollection services, IConfiguration configuration)
+    {
         services.AddCors(options =>
         {
             options.AddPolicy("Default", policy =>
@@ -152,28 +168,10 @@ public static class DependencyInjection
                     .AllowCredentials();
             });
         });
+    }
 
-        services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-            .AddJwtBearer(options =>
-            {
-                var jwtOptions = configuration.GetSection(JwtOptions.SectionName).Get<JwtOptions>()!;
-                options.TokenValidationParameters = new TokenValidationParameters
-                {
-                    ValidateIssuer = true,
-                    ValidateAudience = true,
-                    ValidateLifetime = true,
-                    ValidateIssuerSigningKey = true,
-                    ValidIssuer = jwtOptions.Issuer,
-                    ValidAudience = jwtOptions.Audience,
-                    IssuerSigningKey = new SymmetricSecurityKey(
-                        Encoding.UTF8.GetBytes(jwtOptions.Key)),
-                    ClockSkew = TimeSpan.Zero
-                };
-            });
-
-        services.AddAuthorizationBuilder()
-            .AddPolicy(AuthorizationPolicies.Policies.AdminOnly, policy => policy.RequireRole(AuthorizationPolicies.Roles.Admin));
-
+    private static void AddSecurityAndCompression(IServiceCollection services, IConfiguration configuration)
+    {
         services.AddHealthChecks()
             .AddNpgSql(configuration.GetConnectionString("DefaultConnection")!, name: "postgresql", tags: ["ready"]);
 
@@ -203,66 +201,5 @@ public static class DependencyInjection
             .RemoveServerHeader();
 
         services.AddSingleton(securityHeadersPolicy);
-
-        return services;
-    }
-
-    public static WebApplication UseApiMiddleware(this WebApplication app)
-    {
-        app.UseForwardedHeaders();
-
-        app.UseSecurityHeaders(app.Services.GetRequiredService<HeaderPolicyCollection>());
-
-        app.UseExceptionHandler();
-
-        if (app.Environment.IsDevelopment())
-        {
-            app.UseSwagger();
-            app.MapScalarApiReference(options =>
-            {
-                options
-                    .WithTitle("OrderHub API")
-                    .WithOpenApiRoutePattern("/swagger/{documentName}/swagger.json")
-                    .WithDefaultHttpClient(ScalarTarget.CSharp, ScalarClient.HttpClient)
-                    .AddPreferredSecuritySchemes(["Bearer"])
-                    .AddDocument("v1", routePattern: "/swagger/v1/swagger.json");
-            });
-        }
-
-        app.UseHttpsRedirection();
-        app.UseHsts();
-
-        app.UseResponseCompression();
-        app.UseRateLimiter();
-        app.UseRequestTimeouts();
-        app.UseCors("Default");
-
-        app.UseAuthentication();
-        app.UseAuthorization();
-
-        app.MapHealthChecks("/health");
-        app.MapHealthChecks("/health/ready", new HealthCheckOptions
-        {
-            Predicate = check => check.Tags.Contains("ready")
-        });
-
-        app.MapEndpointGroups();
-
-        return app;
-    }
-
-    public static WebApplicationBuilder ConfigureSerilog(this WebApplicationBuilder builder)
-    {
-        Log.Logger = new LoggerConfiguration()
-            .Enrich.FromLogContext()
-            .Enrich.WithMachineName()
-            .Enrich.WithEnvironmentName()
-            .WriteTo.Console(
-                outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] [{SourceContext}] [{MachineName}] {Message:lj}{NewLine}{Exception}")
-            .CreateLogger();
-
-        builder.Host.UseSerilog();
-
-        return builder;
     }
 }
