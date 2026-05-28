@@ -65,7 +65,10 @@ public sealed class CreateOrderCommandHandler(
             }
 
             if (errors.Count > 0)
+            {
+                await unitOfWork.RollbackTransactionAsync(cancellationToken);
                 return Result<OrderResponse>.Failure(errors[0]);
+            }
 
             var totalAmount = orderItems.Sum(i => i.UnitPrice * i.Quantity);
 
