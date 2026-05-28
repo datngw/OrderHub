@@ -81,7 +81,7 @@
 
 - [x] Password complexity (uppercase, lowercase, digit, special char) + JWT key >= 32 chars
 - [ ] **Per-endpoint rate limiting** — Stricter limits cho auth endpoints: login 5 req/min, register 3 req/min, refresh 10 req/min; separate policy cho admin endpoints
-- [ ] **Request size limiting + input sanitization** — Global `RequestSizeLimit` (100KB), HTML sanitization cho string fields (Name, Description) prevent stored XSS
+- [ ] **Input sanitization** — HTML sanitization cho string fields (Name, Description) prevent stored XSS
 
 ### Stretch Goals (P2)
 
@@ -95,7 +95,7 @@
 ## Acceptance Criteria
 
 | #   | Criteria                                                                                         | Priority | Status |
-| --- | ------------------------------------------------------------------------------------------------ | -------- | ------ |
+| --- | ------------------------------------------------------------------------------------------------ | -------- | ------ | ------------------------------------------------------------------ |
 | 1   | `docker-compose up` → app + DB running, Swagger accessible                                       | P0       | [x]    |
 | 2   | Register + Login → JWT + refresh token                                                           | P0       | [x]    |
 | 3   | CRUD products (Admin only)                                                                       | P0       | [x]    |
@@ -121,4 +121,4 @@
 | 23  | DB connection pooling + EF retry + AsNoTracking/SplitQuery on all queries                        | P0       | [~]    |
 | 24  | Database indexes cover all query patterns + all list endpoints paginated                         | P0       | [~]    |
 | 25  | Auth endpoints rate-limited separately (login 5/min, register 3/min)                             | P0       | [ ]    |
-| 26  | Request size limited globally, string inputs sanitized against XSS                               | P0       | [ ]    |
+| 26  | String inputs sanitized against XSS                                                              | P0       | [ ]    |
