@@ -52,12 +52,10 @@
 ### API Documentation (P0)
 
 - [ ] OpenAPI spec with example request/response for every endpoint + `OrderHub.http` file covering all endpoints
-- [ ] Scalar UI with JWT authorize button
 
 ### Code Quality Audit (P0)
 
 - [ ] Business logic in handlers only, DI scopes correct, all I/O async, no hardcoded secrets, no PII in logs
-- [ ] Proper logging levels — Info (create/cancel), Warning (out-of-stock), Error (exceptions)
 
 ### Documentation (P0)
 
