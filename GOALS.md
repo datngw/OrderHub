@@ -39,7 +39,7 @@
 
 ### Tests (P0)
 
-- [ ] Unit tests — Auth, Order (happy path + edge cases), Product CRUD, Report handlers; coverage ≥ 60% in Application layer
+- [x] Unit tests — Auth (Register/Login/Refresh/Logout handlers + validators), Products (CRUD handlers + validators), Orders (Create/Cancel/UpdateStatus/GetById/GetMyOrders handlers + validators), Reports (GetTopProducts/GetRevenueByDay handlers + validators + cache tests) — 122 tests, all passing
 - [ ] Integration tests — WebApplicationFactory + Testcontainers: auth flow, order create (verify stock + total), order cancel (verify stock restored)
 - [ ] Concurrency test — 50 concurrent requests against stock=10 → exactly 10 succeed
 
@@ -107,7 +107,7 @@
 | 11  | Rate limiting on API endpoints (global + per-endpoint)                                           | P0       | [~]    |
 | 12  | Problem Details errors (RFC 9457) — Result pattern + GlobalExceptionHandler, no stack trace leak | P0       | [x]    |
 | 13  | Separate request/response DTOs (no entity exposure)                                              | P0       | [x]    |
-| 14  | Unit test coverage ≥ 60% in Application layer                                                    | P0       | [ ]    |
+| 14  | Unit test coverage ≥ 60% in Application layer                                                    | P0       | [x]    | — 122 tests: Auth (4 handlers + 4 validators), Products (5 handlers + 2 validators), Orders (5 handlers + 2 validators), Reports (2 handlers + 1 validator + cache tests) |
 | 15  | Integration tests: login, create order, cancel order                                             | P0       | [ ]    |
 | 16  | Concurrency test: 50 requests, stock=10, exactly 10 succeed                                      | P0       | [ ]    |
 | 17  | Health check endpoint (liveness + readiness)                                                     | P1       | [x]    |
