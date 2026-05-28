@@ -17,4 +17,5 @@ public interface IProductRepository
         CancellationToken ct);
     void Add(Product product);
     void Update(Product product);
+    Task<List<Product>> LockForUpdateAsync(IEnumerable<Guid> productIds, CancellationToken ct);
 }

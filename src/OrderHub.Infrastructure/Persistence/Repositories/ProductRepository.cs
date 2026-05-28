@@ -59,6 +59,15 @@ public class ProductRepository(OrderHubDbContext context) : IProductRepository
 
     public void Update(Product product) => context.Products.Update(product);
 
+    public async Task<List<Product>> LockForUpdateAsync(IEnumerable<Guid> productIds, CancellationToken ct)
+    {
+        var ids = productIds.Distinct().OrderBy(id => id).ToList();
+        return await context.Products
+            .FromSqlInterpolated(
+                $@"SELECT * FROM ""Products"" WHERE ""Id"" = ANY({ids}) ORDER BY ""Id"" FOR UPDATE")
+            .ToListAsync(ct);
+    }
+
     private static IQueryable<Product> ApplySorting(IQueryable<Product> query, string? sortBy, string? sortOrder)
     {
         var isDesc = string.Equals(sortOrder, "desc", StringComparison.OrdinalIgnoreCase);

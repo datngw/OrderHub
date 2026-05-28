@@ -79,8 +79,6 @@ public static class DependencyInjection
             });
         });
 
-        services.AddHttpContextAccessor();
-
         services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             .AddJwtBearer(options =>
             {
