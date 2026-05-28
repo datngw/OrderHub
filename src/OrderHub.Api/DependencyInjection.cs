@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.IdentityModel.JsonWebTokens;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
 using NetEscapades.AspNetCore.SecurityHeaders;
@@ -15,6 +16,7 @@ using OrderHub.Api.Middlewares;
 using OrderHub.Application.Common.Security;
 using Scalar.AspNetCore;
 using Serilog;
+using System.Threading.RateLimiting;
 
 namespace OrderHub.Api;
 
@@ -57,10 +59,83 @@ public static class DependencyInjection
         services.AddRateLimiter(options =>
         {
             options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
-            options.AddFixedWindowLimiter("api", opt =>
+
+            options.AddPolicy("auth-login", context =>
             {
-                opt.PermitLimit = 100;
-                opt.Window = TimeSpan.FromMinutes(1);
+                var key = context.Connection.RemoteIpAddress?.ToString() ?? "anonymous";
+                return RateLimitPartition.GetSlidingWindowLimiter(key, _ => new SlidingWindowRateLimiterOptions
+                {
+                    PermitLimit = 5,
+                    Window = TimeSpan.FromMinutes(1),
+                    SegmentsPerWindow = 5,
+                    AutoReplenishment = true
+                });
+            });
+
+            options.AddPolicy("auth-register", context =>
+            {
+                var key = context.Connection.RemoteIpAddress?.ToString() ?? "anonymous";
+                return RateLimitPartition.GetSlidingWindowLimiter(key, _ => new SlidingWindowRateLimiterOptions
+                {
+                    PermitLimit = 3,
+                    Window = TimeSpan.FromMinutes(1),
+                    SegmentsPerWindow = 3,
+                    AutoReplenishment = true
+                });
+            });
+
+            options.AddPolicy("auth-refresh", context =>
+            {
+                var key = context.Connection.RemoteIpAddress?.ToString() ?? "anonymous";
+                return RateLimitPartition.GetSlidingWindowLimiter(key, _ => new SlidingWindowRateLimiterOptions
+                {
+                    PermitLimit = 10,
+                    Window = TimeSpan.FromMinutes(1),
+                    SegmentsPerWindow = 6,
+                    AutoReplenishment = true
+                });
+            });
+
+            options.AddPolicy("products", context =>
+            {
+                var key = context.User?.FindFirst(JwtRegisteredClaimNames.Sub)?.Value
+                          ?? context.Connection.RemoteIpAddress?.ToString()
+                          ?? "anonymous";
+                return RateLimitPartition.GetSlidingWindowLimiter(key, _ => new SlidingWindowRateLimiterOptions
+                {
+                    PermitLimit = 60,
+                    Window = TimeSpan.FromMinutes(1),
+                    SegmentsPerWindow = 6,
+                    AutoReplenishment = true
+                });
+            });
+
+            options.AddPolicy("orders", context =>
+            {
+                var key = context.User?.FindFirst(JwtRegisteredClaimNames.Sub)?.Value
+                          ?? context.Connection.RemoteIpAddress?.ToString()
+                          ?? "anonymous";
+                return RateLimitPartition.GetSlidingWindowLimiter(key, _ => new SlidingWindowRateLimiterOptions
+                {
+                    PermitLimit = 30,
+                    Window = TimeSpan.FromMinutes(1),
+                    SegmentsPerWindow = 6,
+                    AutoReplenishment = true
+                });
+            });
+
+            options.AddPolicy("admin", context =>
+            {
+                var key = context.User?.FindFirst(JwtRegisteredClaimNames.Sub)?.Value
+                          ?? context.Connection.RemoteIpAddress?.ToString()
+                          ?? "anonymous";
+                return RateLimitPartition.GetSlidingWindowLimiter(key, _ => new SlidingWindowRateLimiterOptions
+                {
+                    PermitLimit = 40,
+                    Window = TimeSpan.FromMinutes(1),
+                    SegmentsPerWindow = 6,
+                    AutoReplenishment = true
+                });
             });
         });
 

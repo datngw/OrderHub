@@ -78,7 +78,13 @@
 ### Security Hardening (P0)
 
 - [x] Password complexity (uppercase, lowercase, digit, special char) + JWT key >= 32 chars
-- [ ] **Per-endpoint rate limiting** — Stricter limits cho auth endpoints: login 5 req/min, register 3 req/min, refresh 10 req/min; separate policy cho admin endpoints
+- [x] **Per-endpoint rate limiting partitioned by user ID** — Sliding window limiter phân biệt theo authenticated user ID (anonymous = IP), thay thế policy `"api"` cũ (100 req/min shared toàn server). Chi tiết:
+  - Auth: login 5 req/min (by IP), register 3 req/min (by IP), refresh 10 req/min (by IP)
+  - Products: 60 req/min (partition by userId / IP fallback)
+  - Orders: 30 req/min (partition by userId / IP fallback)
+  - Admin: 40 req/min (partition by userId / IP fallback)
+  - Partition key: `User?.FindFirst(JwtRegisteredClaimNames.Sub)?.Value ?? Connection.RemoteIpAddress?.ToString() ?? "anonymous"`
+  - Sliding window với 6 segments/window — không boundary burst
 - [ ] **Input sanitization** — HTML sanitization cho string fields (Name, Description) prevent stored XSS
 
 ### Stretch Goals (P2)
@@ -104,7 +110,7 @@
 | 8   | Admin order status transitions (Confirmed/Shipped/Delivered)                                     | P0       | [x]    |
 | 9   | Order history for current user (paginated)                                                       | P0       | [x]    |
 | 10  | Admin reports with caching + invalidation                                                        | P1       | [x]    | — IMemoryCache handler-level caching with version-key invalidation |
-| 11  | Rate limiting on API endpoints (global + per-endpoint)                                           | P0       | [~]    |
+| 11  | Rate limiting on API endpoints (global + per-endpoint)                                           | P0       | [x]    | — Sliding window partitioned by userId/IP: auth (3-10/min by IP), products (60/min), orders (30/min), admin (40/min) |
 | 12  | Problem Details errors (RFC 9457) — Result pattern + GlobalExceptionHandler, no stack trace leak | P0       | [x]    |
 | 13  | Separate request/response DTOs (no entity exposure)                                              | P0       | [x]    |
 | 14  | Unit test coverage ≥ 60% in Application layer                                                    | P0       | [x]    | — 122 tests: Auth (4 handlers + 4 validators), Products (5 handlers + 2 validators), Orders (5 handlers + 2 validators), Reports (2 handlers + 1 validator + cache tests) |
@@ -118,5 +124,5 @@
 | 22  | Serilog logs correlated with traces (TraceId + SpanId)                                           | P0       | [~]    |
 | 23  | DB connection pooling + EF retry + AsNoTracking/SplitQuery on all queries                        | P0       | [x]    |
 | 24  | Database indexes cover all query patterns + all list endpoints paginated                         | P0       | [x]    |
-| 25  | Auth endpoints rate-limited separately (login 5/min, register 3/min)                             | P0       | [ ]    |
+| 25  | Auth endpoints rate-limited separately (login 5/min, register 3/min)                             | P0       | [x]    | — Sliding window partitioned by IP |
 | 26  | String inputs sanitized against XSS                                                              | P0       | [ ]    |

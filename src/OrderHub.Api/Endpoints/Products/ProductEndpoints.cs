@@ -28,7 +28,7 @@ public sealed class ProductEndpoints : IEndpointGroup
         var group = endpoints.MapGroup("/api/v{version:apiVersion}/products")
             .WithApiVersionSet(versionSet)
             .WithTags("Products")
-            .RequireRateLimiting("api");
+            .RequireRateLimiting("products");
 
         group.MapGet("/", HandleGetProducts)
             .WithName("GetProducts").WithSummary("Get paginated product list with filters")

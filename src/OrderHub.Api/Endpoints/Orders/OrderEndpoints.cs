@@ -25,7 +25,7 @@ public sealed class OrderEndpoints : IEndpointGroup
         var group = endpoints.MapGroup("/api/v{version:apiVersion}/orders")
             .WithApiVersionSet(versionSet)
             .WithTags("Orders")
-            .RequireRateLimiting("api")
+            .RequireRateLimiting("orders")
             .RequireAuthorization();
 
         group.MapPost("/", HandleCreateOrder)

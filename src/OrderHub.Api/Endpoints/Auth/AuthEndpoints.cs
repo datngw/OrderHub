@@ -26,13 +26,13 @@ public sealed class AuthEndpoints : IEndpointGroup
 
         var group = endpoints.MapGroup("/api/v{version:apiVersion}/auth")
             .WithApiVersionSet(versionSet)
-            .WithTags("Auth")
-            .RequireRateLimiting("api");
+            .WithTags("Auth");
 
         group.MapPost("/register", HandleRegister)
             .WithName("Register").WithSummary("Register a new user")
             .HasApiVersion(new ApiVersion(1))
             .AllowAnonymous()
+            .RequireRateLimiting("auth-register")
             .Produces<AuthResponse>(StatusCodes.Status201Created)
             .ProducesValidationProblem()
             .ProducesProblem(StatusCodes.Status409Conflict)
@@ -42,6 +42,7 @@ public sealed class AuthEndpoints : IEndpointGroup
             .WithName("Login").WithSummary("Authenticate and get tokens")
             .HasApiVersion(new ApiVersion(1))
             .AllowAnonymous()
+            .RequireRateLimiting("auth-login")
             .Produces<AuthResponse>(StatusCodes.Status200OK)
             .ProducesValidationProblem()
             .ProducesProblem(StatusCodes.Status401Unauthorized)
@@ -51,6 +52,7 @@ public sealed class AuthEndpoints : IEndpointGroup
             .WithName("RefreshToken").WithSummary("Refresh access token")
             .HasApiVersion(new ApiVersion(1))
             .AllowAnonymous()
+            .RequireRateLimiting("auth-refresh")
             .Produces<AuthResponse>(StatusCodes.Status200OK)
             .ProducesValidationProblem()
             .ProducesProblem(StatusCodes.Status401Unauthorized)
@@ -60,6 +62,7 @@ public sealed class AuthEndpoints : IEndpointGroup
             .WithName("Logout").WithSummary("Revoke refresh token")
             .HasApiVersion(new ApiVersion(1))
             .RequireAuthorization()
+            .RequireRateLimiting("products")
             .Produces(StatusCodes.Status204NoContent)
             .ProducesValidationProblem()
             .ProducesProblem(StatusCodes.Status401Unauthorized)

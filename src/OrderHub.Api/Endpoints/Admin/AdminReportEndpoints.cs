@@ -20,7 +20,7 @@ public sealed class AdminReportEndpoints : IEndpointGroup
         var group = endpoints.MapGroup("/api/v{version:apiVersion}/admin/reports")
             .WithApiVersionSet(versionSet)
             .WithTags("Admin Reports")
-            .RequireRateLimiting("api")
+            .RequireRateLimiting("admin")
             .RequireAuthorization(AuthorizationPolicies.Policies.AdminOnly);
 
         group.MapGet("/top-products", HandleGetTopProducts)
