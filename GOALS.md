@@ -72,8 +72,8 @@
 
 ### Performance — Database & Query Optimization (P0)
 
-- [~] **Connection pooling + Query optimization** — Npgsql pooling (`Pooling=true;MinPoolSize=5;MaxPoolSize=100`), `EnableRetryOnFailure()`, `AsNoTracking()` on all read queries, `AsSplitQuery()` on Order includes — EnableRetryOnFailure + AsNoTracking done, AsSplitQuery not yet
-- [~] **Query completeness** — Migration thêm indexes thiếu (`Orders.Status`, `OrderItems.OrderId`, `OrderItems.ProductId`); verify all list endpoints return `PagedResult<T>` — Indexes exist on OrderItems, Orders.Status and list endpoints paginated
+- [x] **Connection pooling + Query optimization** — Npgsql pooling (`Pooling=true;MinPoolSize=5;MaxPoolSize=100`), `EnableRetryOnFailure()`, `AsNoTracking()` on all read queries, `AsSplitQuery()` on Order includes
+- [x] **Query completeness** — Indexes on `OrderItems.OrderId`, `OrderItems.ProductId`, `Orders.Status`, `Orders.UserId`, `Orders.CreatedAt`; all list endpoints return `PagedResult<T>`
 
 ### Security Hardening (P0)
 
@@ -116,7 +116,7 @@
 | 20  | README with instructions, architecture, trade-offs                                               | P0       | [x]    |
 | 21  | OpenTelemetry traces + business metrics exported to Jaeger via OTLP                              | P0       | [~]    |
 | 22  | Serilog logs correlated with traces (TraceId + SpanId)                                           | P0       | [~]    |
-| 23  | DB connection pooling + EF retry + AsNoTracking/SplitQuery on all queries                        | P0       | [~]    |
-| 24  | Database indexes cover all query patterns + all list endpoints paginated                         | P0       | [~]    |
+| 23  | DB connection pooling + EF retry + AsNoTracking/SplitQuery on all queries                        | P0       | [x]    |
+| 24  | Database indexes cover all query patterns + all list endpoints paginated                         | P0       | [x]    |
 | 25  | Auth endpoints rate-limited separately (login 5/min, register 3/min)                             | P0       | [ ]    |
 | 26  | String inputs sanitized against XSS                                                              | P0       | [ ]    |

@@ -29,5 +29,6 @@ public class OrderConfiguration : IEntityTypeConfiguration<Order>
 
         builder.HasIndex(o => o.UserId);
         builder.HasIndex(o => o.CreatedAt);
+        builder.HasIndex(o => o.Status);
     }
 }

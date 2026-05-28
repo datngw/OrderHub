@@ -11,6 +11,7 @@ public class OrderRepository(OrderHubDbContext context) : IOrderRepository
             .Include(o => o.Items)
             .ThenInclude(i => i.Product)
             .AsNoTracking()
+            .AsSplitQuery()
             .FirstOrDefaultAsync(o => o.Id == id, ct);
     }
 
@@ -21,6 +22,7 @@ public class OrderRepository(OrderHubDbContext context) : IOrderRepository
             .Include(o => o.Items)
             .ThenInclude(i => i.Product)
             .AsNoTracking()
+            .AsSplitQuery()
             .Where(o => o.UserId == userId)
             .OrderByDescending(o => o.CreatedAt);
 
