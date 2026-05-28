@@ -67,7 +67,7 @@ public sealed class OrderEndpoints : IEndpointGroup
             .ProducesProblem(StatusCodes.Status403Forbidden);
     }
 
-    private static async Task<Results<Created<OrderResponse>, ProblemHttpResult>> HandleCreateOrder(
+    private static async Task<Results<Created<OrderResponse>, CustomProblemResult>> HandleCreateOrder(
         [FromBody] CreateOrderRequest request, IMediator mediator, CancellationToken ct)
     {
         var command = new CreateOrderCommand(
@@ -76,28 +76,28 @@ public sealed class OrderEndpoints : IEndpointGroup
         return result.ToCreatedResponse($"/api/v1/orders/{result.Value?.Id}");
     }
 
-    private static async Task<Results<Ok<PagedResult<OrderResponse>>, ProblemHttpResult>> HandleGetMyOrders(
-        [AsParameters] GetMyOrdersQuery query, IMediator mediator, CancellationToken ct)
+    private static async Task<Results<Ok<PagedResult<OrderResponse>>, CustomProblemResult>> HandleGetMyOrders(
+        int page = 1, int pageSize = 20, IMediator? mediator = null, CancellationToken ct = default)
     {
-        var result = await mediator.Send(query, ct);
+        var result = await mediator!.Send(new GetMyOrdersQuery(Guid.Empty, page, pageSize), ct);
         return result.ToResponse();
     }
 
-    private static async Task<Results<Ok<OrderResponse>, ProblemHttpResult>> HandleGetOrderById(
+    private static async Task<Results<Ok<OrderResponse>, CustomProblemResult>> HandleGetOrderById(
         Guid id, IMediator mediator, CancellationToken ct)
     {
         var result = await mediator.Send(new GetOrderByIdQuery(id), ct);
         return result.ToResponse();
     }
 
-    private static async Task<Results<NoContent, ProblemHttpResult>> HandleUpdateOrderStatus(
+    private static async Task<Results<NoContent, CustomProblemResult>> HandleUpdateOrderStatus(
         Guid id, [FromBody] UpdateOrderStatusRequest request, IMediator mediator, CancellationToken ct)
     {
         var result = await mediator.Send(new UpdateOrderStatusCommand(id, request.Status), ct);
         return result.ToNoContentResponse();
     }
 
-    private static async Task<Results<NoContent, ProblemHttpResult>> HandleCancelOrder(
+    private static async Task<Results<NoContent, CustomProblemResult>> HandleCancelOrder(
         Guid id, IMediator mediator, CancellationToken ct)
     {
         var result = await mediator.Send(new CancelOrderCommand(id), ct);

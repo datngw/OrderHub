@@ -67,21 +67,21 @@ public sealed class ProductEndpoints : IEndpointGroup
             .RequireAuthorization(AuthorizationPolicies.Policies.AdminOnly);
     }
 
-    private static async Task<Results<Ok<PagedResult<ProductResponse>>, ProblemHttpResult>> HandleGetProducts(
+    private static async Task<Results<Ok<PagedResult<ProductResponse>>, CustomProblemResult>> HandleGetProducts(
         [AsParameters] GetProductsQuery query, IMediator mediator, CancellationToken ct)
     {
         var result = await mediator.Send(query, ct);
         return result.ToResponse();
     }
 
-    private static async Task<Results<Ok<ProductResponse>, ProblemHttpResult>> HandleGetProduct(
+    private static async Task<Results<Ok<ProductResponse>, CustomProblemResult>> HandleGetProduct(
         Guid id, IMediator mediator, CancellationToken ct)
     {
         var result = await mediator.Send(new GetProductByIdQuery(id), ct);
         return result.ToResponse();
     }
 
-    private static async Task<Results<Created<ProductResponse>, ProblemHttpResult>> HandleCreateProduct(
+    private static async Task<Results<Created<ProductResponse>, CustomProblemResult>> HandleCreateProduct(
         [FromBody] CreateProductRequest request, IMediator mediator, CancellationToken ct)
     {
         var command = new CreateProductCommand(request.SKU, request.Name, request.Description, request.Price, request.Stock, request.Category);
@@ -89,7 +89,7 @@ public sealed class ProductEndpoints : IEndpointGroup
         return result.ToCreatedResponse($"/api/v1/products/{result.Value?.Id}");
     }
 
-    private static async Task<Results<Ok<ProductResponse>, ProblemHttpResult>> HandleUpdateProduct(
+    private static async Task<Results<Ok<ProductResponse>, CustomProblemResult>> HandleUpdateProduct(
         Guid id, [FromBody] UpdateProductRequest request, IMediator mediator, CancellationToken ct)
     {
         var command = new UpdateProductCommand(id, request.Name, request.Description, request.Price, request.Stock, request.Category);
@@ -97,7 +97,7 @@ public sealed class ProductEndpoints : IEndpointGroup
         return result.ToResponse();
     }
 
-    private static async Task<Results<NoContent, ProblemHttpResult>> HandleDeleteProduct(
+    private static async Task<Results<NoContent, CustomProblemResult>> HandleDeleteProduct(
         Guid id, IMediator mediator, CancellationToken ct)
     {
         var result = await mediator.Send(new DeleteProductCommand(id), ct);

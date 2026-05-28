@@ -1,5 +1,5 @@
 using Microsoft.AspNetCore.Diagnostics;
-using Microsoft.AspNetCore.Mvc;
+using OrderHub.Api.Common;
 using OrderHub.Application.Common.Exceptions;
 using OrderHub.Domain.Common;
 
@@ -30,19 +30,20 @@ public sealed class GlobalExceptionHandler : IExceptionHandler
         _logger.LogWarning(exception, "Validation failed");
 
         var errors = exception.Errors?
-            .GroupBy(e => e.PropertyName)
-            .ToDictionary(g => g.Key, g => g.Select(e => e.ErrorMessage).ToArray())
-            ?? new Dictionary<string, string[]>();
+            .Select(e => new CustomProblemDetails.ValidationError(e.PropertyName, e.ErrorMessage))
+            .ToList();
 
-        var problemDetails = new HttpValidationProblemDetails(errors)
+        var problemDetails = new CustomProblemDetails
         {
             Status = StatusCodes.Status400BadRequest,
-            Title = "One or more validation errors occurred.",
-            Type = "https://tools.ietf.org/html/rfc9110#section-15.5.1",
-            Extensions = { ["traceId"] = httpContext.TraceIdentifier }
+            Type = "ValidationFailure",
+            Title = "Validation error",
+            Detail = "One or more validation errors has occurred",
+            TraceId = httpContext.TraceIdentifier,
+            Errors = errors
         };
 
-        httpContext.Response.StatusCode = problemDetails.Status.Value;
+        httpContext.Response.StatusCode = problemDetails.Status;
 
         await httpContext.Response.WriteAsJsonAsync(problemDetails, ct);
 
@@ -56,13 +57,13 @@ public sealed class GlobalExceptionHandler : IExceptionHandler
 
         var statusCode = MapToStatusCode(exception.Error);
 
-        var problemDetails = new ProblemDetails
+        var problemDetails = new CustomProblemDetails
         {
             Status = statusCode,
-            Title = exception.Error.Code,
+            Type = MapToErrorType(exception.Error),
+            Title = MapToTitle(exception.Error),
             Detail = exception.Message,
-            Type = $"https://httpstatuses.com/{statusCode}",
-            Extensions = { ["traceId"] = httpContext.TraceIdentifier }
+            TraceId = httpContext.TraceIdentifier
         };
 
         httpContext.Response.StatusCode = statusCode;
@@ -77,15 +78,16 @@ public sealed class GlobalExceptionHandler : IExceptionHandler
     {
         _logger.LogError(exception, "Unhandled exception occurred");
 
-        var problemDetails = new ProblemDetails
+        var problemDetails = new CustomProblemDetails
         {
             Status = StatusCodes.Status500InternalServerError,
-            Title = "An unexpected error occurred.",
-            Type = $"https://httpstatuses.com/500",
-            Extensions = { ["traceId"] = httpContext.TraceIdentifier }
+            Type = "ServerError",
+            Title = "Server error",
+            Detail = "An unexpected error has occurred",
+            TraceId = httpContext.TraceIdentifier
         };
 
-        httpContext.Response.StatusCode = problemDetails.Status.Value;
+        httpContext.Response.StatusCode = problemDetails.Status;
 
         await httpContext.Response.WriteAsJsonAsync(problemDetails, ct);
 
@@ -100,5 +102,25 @@ public sealed class GlobalExceptionHandler : IExceptionHandler
         ErrorType.Forbidden => StatusCodes.Status403Forbidden,
         ErrorType.Validation => StatusCodes.Status400BadRequest,
         _ => StatusCodes.Status400BadRequest
+    };
+
+    private static string MapToErrorType(Error error) => error.Type switch
+    {
+        ErrorType.NotFound => "NotFound",
+        ErrorType.Conflict => "Conflict",
+        ErrorType.Unauthorized => "Unauthorized",
+        ErrorType.Forbidden => "Forbidden",
+        ErrorType.Validation => "ValidationFailure",
+        _ => "BadRequest"
+    };
+
+    private static string MapToTitle(Error error) => error.Type switch
+    {
+        ErrorType.NotFound => "Not found",
+        ErrorType.Conflict => "Conflict",
+        ErrorType.Unauthorized => "Unauthorized",
+        ErrorType.Forbidden => "Forbidden",
+        ErrorType.Validation => "Validation error",
+        _ => "Bad request"
     };
 }

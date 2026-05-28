@@ -21,7 +21,7 @@ public class RefreshToken : BaseEntity
         {
             Token = token,
             UserId = userId,
-            ExpiresAt = expiresAt.DateTime
+            ExpiresAt = expiresAt.UtcDateTime
         };
     }
 

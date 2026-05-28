@@ -12,8 +12,8 @@ using OrderHub.Infrastructure.Persistence;
 namespace OrderHub.Infrastructure.Migrations
 {
     [DbContext(typeof(OrderHubDbContext))]
-    [Migration("20260526154005_AddReplacedByTokenIdToRefreshToken")]
-    partial class AddReplacedByTokenIdToRefreshToken
+    [Migration("20260528030921_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)

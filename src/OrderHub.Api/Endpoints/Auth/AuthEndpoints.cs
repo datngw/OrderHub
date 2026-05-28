@@ -66,28 +66,28 @@ public sealed class AuthEndpoints : IEndpointGroup
             .ProducesProblem(StatusCodes.Status429TooManyRequests);
     }
 
-    private static async Task<Results<Created<AuthResponse>, ProblemHttpResult>> HandleRegister(
+    private static async Task<Results<Created<AuthResponse>, CustomProblemResult>> HandleRegister(
         [FromBody] RegisterRequest request, IMediator mediator, CancellationToken ct)
     {
         var result = await mediator.Send(new RegisterCommand(request.Email, request.Password, request.FullName), ct);
         return result.ToCreatedResponse("/api/v1/auth/login");
     }
 
-    private static async Task<Results<Ok<AuthResponse>, ProblemHttpResult>> HandleLogin(
+    private static async Task<Results<Ok<AuthResponse>, CustomProblemResult>> HandleLogin(
         [FromBody] LoginRequest request, IMediator mediator, CancellationToken ct)
     {
         var result = await mediator.Send(new LoginCommand(request.Email, request.Password), ct);
         return result.ToResponse();
     }
 
-    private static async Task<Results<Ok<AuthResponse>, ProblemHttpResult>> HandleRefresh(
+    private static async Task<Results<Ok<AuthResponse>, CustomProblemResult>> HandleRefresh(
         [FromBody] RefreshTokenRequest request, IMediator mediator, CancellationToken ct)
     {
         var result = await mediator.Send(new RefreshCommand(request.RefreshToken), ct);
         return result.ToResponse();
     }
 
-    private static async Task<Results<NoContent, ProblemHttpResult>> HandleLogout(
+    private static async Task<Results<NoContent, CustomProblemResult>> HandleLogout(
         [FromBody] RefreshTokenRequest request, IMediator mediator, CancellationToken ct)
     {
         var result = await mediator.Send(new LogoutCommand(request.RefreshToken), ct);
