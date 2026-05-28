@@ -76,9 +76,9 @@ public sealed class OrderEndpoints : IEndpointGroup
     }
 
     private static async Task<Results<Ok<PagedResult<OrderResponse>>, CustomProblemResult>> HandleGetMyOrders(
-        int page = 1, int pageSize = 20, IMediator? mediator = null, CancellationToken ct = default)
+        IMediator mediator, int page = 1, int pageSize = 20, CancellationToken ct = default)
     {
-        var result = await mediator!.Send(new GetMyOrdersQuery(Guid.Empty, page, pageSize), ct);
+        var result = await mediator.Send(new GetMyOrdersQuery(page, pageSize), ct);
         return result.ToResponse();
     }
 

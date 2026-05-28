@@ -23,6 +23,6 @@ public sealed class GetOrderByIdQueryHandler(
         if (!userContext.IsAdmin && order.UserId != userContext.UserId)
             return Result<OrderResponse>.Failure(OrderErrors.Forbidden);
 
-        return order.Adapt<OrderResponse>();
+        return Result<OrderResponse>.Success(order.Adapt<OrderResponse>());
     }
 }

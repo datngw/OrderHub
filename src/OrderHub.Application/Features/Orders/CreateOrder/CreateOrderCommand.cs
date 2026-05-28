@@ -5,8 +5,5 @@ namespace OrderHub.Application.Features.Orders.CreateOrder;
 
 public record CreateOrderItem(Guid ProductId, int Quantity);
 
-public record CreateOrderCommand(Guid UserId, List<CreateOrderItem> Items)
-    : ICommand<OrderResponse>
-{
-    public CreateOrderCommand(List<CreateOrderItem> items) : this(Guid.Empty, items) { }
-}
+public record CreateOrderCommand(List<CreateOrderItem> Items)
+    : ICommand<OrderResponse>;

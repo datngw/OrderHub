@@ -78,7 +78,7 @@ public sealed class CreateOrderCommandHandler(
             await unitOfWork.SaveChangesAsync(cancellationToken);
             await unitOfWork.CommitTransactionAsync(cancellationToken);
 
-            return order.Adapt<OrderResponse>();
+            return Result<OrderResponse>.Success(order.Adapt<OrderResponse>());
         }
         catch
         {

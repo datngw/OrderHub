@@ -19,12 +19,12 @@ public sealed class GetMyOrdersQueryHandler(
         var (items, totalCount) = await orderRepository.GetByUserIdAsync(
             userContext.UserId, request.Page, request.PageSize, cancellationToken);
 
-        return new PagedResult<OrderResponse>
+        return Result<PagedResult<OrderResponse>>.Success(new PagedResult<OrderResponse>
         {
             Items = items.Adapt<List<OrderResponse>>(),
             TotalCount = totalCount,
             Page = request.Page,
             PageSize = request.PageSize
-        };
+        });
     }
 }

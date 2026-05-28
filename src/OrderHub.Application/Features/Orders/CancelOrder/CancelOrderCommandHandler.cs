@@ -20,7 +20,7 @@ public sealed class CancelOrderCommandHandler(
         await unitOfWork.BeginTransactionAsync(cancellationToken);
         try
         {
-            var order = await orderRepository.GetByIdAsync(request.OrderId, cancellationToken);
+            var order = await orderRepository.GetByIdForUpdateAsync(request.OrderId, cancellationToken);
 
             if (order is null)
                 return Result.Failure(OrderErrors.NotFoundById(request.OrderId));
@@ -38,20 +38,13 @@ public sealed class CancelOrderCommandHandler(
             var products = await productRepository.LockForUpdateAsync(productIds, cancellationToken);
             var productMap = products.ToDictionary(p => p.Id);
 
-            var trackedOrder = await orderRepository.GetByIdForUpdateAsync(request.OrderId, cancellationToken);
-            if (trackedOrder is null)
-                return Result.Failure(OrderErrors.NotFoundById(request.OrderId));
-
-            if (trackedOrder.Status != OrderStatusEnum.Pending)
-                return Result.Failure(OrderErrors.CannotBeCancelled);
-
-            foreach (var item in trackedOrder.Items)
+            foreach (var item in order.Items)
             {
                 if (productMap.TryGetValue(item.ProductId, out var product))
                     product.Stock += item.Quantity;
             }
 
-            trackedOrder.Status = OrderStatusEnum.Cancelled;
+            order.Status = OrderStatusEnum.Cancelled;
 
             await unitOfWork.SaveChangesAsync(cancellationToken);
             await unitOfWork.CommitTransactionAsync(cancellationToken);
