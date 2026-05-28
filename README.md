@@ -124,6 +124,9 @@ dotnet test tests/OrderHub.IntegrationTests
 
 # With coverage report
 dotnet test --collect:"XPlat Code Coverage"
+
+# Coverage report for Application + Domain layers (Windows)
+rd /s /q coverage && dotnet test tests/OrderHub.UnitTests --collect:"XPlat Code Coverage" --results-directory ./coverage && reportgenerator -reports:"coverage/**/coverage.cobertura.xml" -targetdir:"coverage/report" -reporttypes:"Html" -assemblyfilters:"+OrderHub.Application;+OrderHub.Domain" && start coverage/report/index.html
 ```
 
 ---

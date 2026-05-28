@@ -33,5 +33,8 @@
 Thumbs.db
 .DS_Store
 
+## Coverage
+coverage/
+
 ## Docker volumes
 postgres-data/
