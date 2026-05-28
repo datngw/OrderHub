@@ -4,11 +4,12 @@ using System.Security.Cryptography;
 using System.Text;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
+using OrderHub.Application.Common;
 using OrderHub.Application.Common.Security;
 
 namespace OrderHub.Infrastructure.Services;
 
-public sealed class TokenService(IOptions<JwtOptions> jwtOptions, TimeProvider clock) : ITokenService
+public sealed class TokenService(IOptions<JwtOptions> jwtOptions, IDateTimeProvider clock) : ITokenService
 {
     private readonly JwtOptions _options = jwtOptions.Value;
 
@@ -29,7 +30,7 @@ public sealed class TokenService(IOptions<JwtOptions> jwtOptions, TimeProvider c
             issuer: _options.Issuer,
             audience: _options.Audience,
             claims: claims,
-            expires: clock.GetUtcNow().AddMinutes(_options.AccessTokenMinutes).UtcDateTime,
+            expires: clock.UtcNow.AddMinutes(_options.AccessTokenMinutes).UtcDateTime,
             signingCredentials: credentials);
 
         return new JwtSecurityTokenHandler().WriteToken(token);

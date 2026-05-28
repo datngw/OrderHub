@@ -16,6 +16,9 @@ public sealed class LogoutCommandHandler(IRefreshTokenRepository refreshTokenRep
         if (token is null)
             return Result.Failure(AuthErrors.InvalidRefreshToken);
 
+        if (token.IsRevoked)
+            return Result.Success();
+
         token.Revoke();
         await unitOfWork.SaveChangesAsync(cancellationToken);
 

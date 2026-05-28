@@ -29,7 +29,7 @@ public class OrderHubDbContext : DbContext
 
     public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
-        var utcNow = DateTime.SpecifyKind(_dateTimeProvider.UtcNow, DateTimeKind.Utc);
+        var utcNow = _dateTimeProvider.UtcNow.UtcDateTime;
 
         foreach (var entry in ChangeTracker.Entries<Domain.Common.BaseEntity>())
         {

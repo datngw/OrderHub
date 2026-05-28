@@ -1,4 +1,5 @@
 using Mapster;
+using OrderHub.Application.Common;
 using OrderHub.Application.Common.Messaging;
 using OrderHub.Application.Common.Security;
 using OrderHub.Application.Common.Persistence;
@@ -14,7 +15,7 @@ public sealed class RefreshCommandHandler(
     IUnitOfWork unitOfWork,
     ITokenService tokenService,
     IOptions<JwtOptions> jwtOptions,
-    TimeProvider clock)
+    IDateTimeProvider clock)
     : ICommandHandler<RefreshCommand, AuthResponse>
 {
     private readonly JwtOptions _jwtOptions = jwtOptions.Value;
@@ -26,11 +27,12 @@ public sealed class RefreshCommandHandler(
         if (existingToken is null)
             return Result<AuthResponse>.Failure(AuthErrors.InvalidRefreshToken);
 
-        var now = clock.GetUtcNow();
+        var now = clock.UtcNow;
 
         if (existingToken.IsRevoked)
         {
             await RevokeTokenFamilyAsync(existingToken, cancellationToken);
+            await unitOfWork.SaveChangesAsync(cancellationToken);
             return Result<AuthResponse>.Failure(AuthErrors.RefreshTokenRevoked);
         }
 
@@ -49,7 +51,7 @@ public sealed class RefreshCommandHandler(
         var user = existingToken.User;
         var accessToken = tokenService.GenerateAccessToken(user.Id, user.Email, user.Role.ToString());
 
-        return user.Adapt<AuthResponse>() with { AccessToken = accessToken, RefreshToken = newRefreshToken.Token };
+        return Result<AuthResponse>.Success(user.Adapt<AuthResponse>() with { AccessToken = accessToken, RefreshToken = newRefreshToken.Token });
     }
 
     private async Task RevokeTokenFamilyAsync(RefreshToken revokedToken, CancellationToken cancellationToken)
