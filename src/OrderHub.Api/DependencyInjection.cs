@@ -3,7 +3,6 @@ using Asp.Versioning;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
-using Microsoft.AspNetCore.OutputCaching;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.Extensions.Configuration;
@@ -105,15 +104,6 @@ public static class DependencyInjection
 
         services.AddRequestTimeouts();
 
-        services.AddOutputCache(options =>
-        {
-            options.AddBasePolicy(policy => policy.Expire(TimeSpan.FromMinutes(5)));
-            options.AddPolicy("products", policy =>
-                policy.Expire(TimeSpan.FromMinutes(5)).Tag("products"));
-            options.AddPolicy("reports", policy =>
-                policy.Expire(TimeSpan.FromMinutes(5)).Tag("reports"));
-        });
-
         services.AddResponseCompression(options =>
         {
             options.EnableForHttps = true;
@@ -174,7 +164,6 @@ public static class DependencyInjection
 
         app.UseAuthentication();
         app.UseAuthorization();
-        app.UseOutputCache();
 
         app.MapHealthChecks("/health");
         app.MapHealthChecks("/health/ready", new HealthCheckOptions

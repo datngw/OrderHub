@@ -26,6 +26,7 @@ Api → Infrastructure → Application → Domain
 - **Separate DTOs** — Request DTOs and response DTOs are always separate from domain entities. Never expose entities to clients.
 - **Pessimistic locking** — `SELECT ... FOR UPDATE` on product rows during order creation to prevent overselling.
 - **Observability** — Serilog for structured logging, OpenTelemetry SDK for distributed tracing + metrics, Jaeger for visualization. All signals exported via OTLP.
+- **IMemoryCache with version-key pattern** — Data-level caching in query handlers. Version keys enable prefix-based invalidation: on mutation, version is reset → old cache entries orphaned → expire by TTL. `CacheKeys` static class centralizes all keys and invalidation logic.
 - **Result pattern** — Handlers return `Result<T>` instead of throwing. Domain error collections (`ProductErrors`, `AuthErrors`) define typed `Error` → mapped to HTTP status via `ResultExtensions`.
 
 ## Tech Stack
@@ -38,7 +39,7 @@ Api → Infrastructure → Application → Domain
 | Validation | FluentValidation | Registered via DI |
 | Mapping | Mapster | Between entities and DTOs |
 | CQRS | MediatR | Pipeline behavior for validation |
-| Caching | Output Caching | 5 min expiration, tagged policies |
+| Caching | IMemoryCache | Handler-level data caching, version-key invalidation, SizeLimit 10K entries |
 | API Docs | Scalar + Swashbuckle | Scalar UI with OpenAPI spec |
 | Logging | Serilog | Structured logging, enrichers, OTLP export |
 | Tracing | OpenTelemetry SDK | ASP.NET Core + EF Core + HttpClient auto-instrumentation |
@@ -79,6 +80,7 @@ OrderHub/
 - Response DTOs: at feature-group level if shared (e.g., `Features/Products/ProductResponse.cs`)
 - Validators: validate Commands/Queries, co-located with their feature (e.g., `Features/Auth/Register/RegisterCommandValidator.cs`)
 - Pipeline behaviors: `Application/Behaviors/`
+- Cache keys and invalidation: `Application/Common/Caching/CacheKeys.cs`
 - Entity configurations: `Persistence/Configurations/{EntityName}Configuration.cs`
 
 ### Naming
@@ -147,7 +149,7 @@ docker-compose up --build
 1. **PostgreSQL over SQL Server** — Open-source, mature row-level locking, no licensing cost.
 2. **Pessimistic locking for stock** — Prevents oversell under concurrency. Correctness > throughput for commerce.
 3. **Mapster over AutoMapper** — Faster compile-time code generation, less reflection.
-4. **Output Caching over IMemoryCache/Redis** — Built-in ASP.NET Core, tagged policies for granular invalidation, fits single-instance deployment.
+4. **IMemoryCache over Output Caching** — Handler-level caching stores domain objects, reusable across endpoints. Version-key pattern enables prefix-based invalidation without tag support. Fits single-instance deployment; migrate to HybridCache (.NET 9+) when scaling.
 5. **Specific Repository + Unit of Work** — Each entity has its own repository interface (IProductRepository, IUserRepository, IRefreshTokenRepository, IOrderRepository) in Domain/Interfaces/. IUnitOfWork wraps SaveChanges and transactions. Infrastructure/Persistence/Repositories/ contains implementations.
 6. **PasswordHasher<T> over BCrypt** — Built-in ASP.NET Core, PBKDF2 with HMAC-SHA256, auto-upgradable hash format, no external dependency.
 7. **Category as string** — No separate Category table for MVP. Easy to normalize later.

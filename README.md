@@ -9,7 +9,7 @@ Central order management API for an e-commerce platform — product catalog, ord
 - **Authentication** — JWT access tokens (15 min) + refresh tokens (7 days), role-based access (Admin / Customer)
 - **Product Catalog** — CRUD with soft delete, paginated list with filtering, search, and sorting
 - **Order Management** — Atomic creation with pessimistic locking (`SELECT ... FOR UPDATE`) to prevent overselling, price snapshots, status transitions, cancellation with stock restore
-- **Admin Reports** — Top products by revenue, revenue by day, output-cached with tag-based invalidation
+- **Admin Reports** — Top products by revenue, revenue by day, cached with version-key invalidation
 - **Observability** — Structured logging (Serilog), distributed tracing, custom business metrics, all via OpenTelemetry + Jaeger
 - **API Documentation** — Interactive Scalar UI with OpenAPI spec
 - **Production-Ready** — Rate limiting, response compression (Brotli + Gzip), security headers, health probes, API versioning
@@ -28,7 +28,7 @@ Api  →  Infrastructure  →  Application  →  Domain
 | ------------------ | ------------------------------------------------------------------------------------------------------- |
 | **Domain**         | Entities, enums, value objects, repository interfaces. Zero external dependencies.                      |
 | **Application**    | MediatR commands/queries, FluentValidation, DTOs, Result pattern (business errors), handler interfaces. |
-| **Infrastructure** | EF Core, repository implementations, JWT auth, output caching, OpenTelemetry setup.                     |
+| **Infrastructure** | EF Core, repository implementations, JWT auth, OpenTelemetry setup.                                  |
 | **Api**            | Minimal API endpoints, middleware, DI registration. Entry point only.                                   |
 
 Key patterns in use:
@@ -50,7 +50,7 @@ Key patterns in use:
 | Validation        | FluentValidation                                |
 | Mapping           | Mapster                                         |
 | CQRS              | MediatR                                         |
-| Caching           | ASP.NET Core Output Caching                     |
+| Caching           | IMemoryCache (handler-level, version-key pattern) |
 | Logging           | Serilog → OTLP                                  |
 | Tracing & Metrics | OpenTelemetry SDK                               |
 | Tracing UI        | Jaeger                                          |
@@ -234,7 +234,7 @@ OrderHub/
 | PostgreSQL over SQL Server         | Open-source, mature row-level locking, no licensing cost                                          |
 | Pessimistic locking for stock      | Guarantees no oversell under concurrency; correctness over throughput                             |
 | Mapster over AutoMapper            | Compile-time code generation, less runtime reflection                                             |
-| Output Caching over Redis          | Built into ASP.NET Core, tagged policies for granular invalidation; Redis available when scaling  |
+| IMemoryCache over Output Caching   | Handler-level caching stores domain objects, reusable across endpoints; version-key pattern for prefix invalidation; migrate to HybridCache (.NET 9+) when scaling |
 | PasswordHasher\<T\> over BCrypt    | Built-in ASP.NET Core, auto-upgradable hash format, no external dependency                        |
 | Specific Repository + Unit of Work | Focused contracts per entity, explicit transaction boundaries, easier to test                     |
 | Serilog + OpenTelemetry            | Serilog for structured logging maturity; OpenTelemetry SDK for vendor-neutral tracing and metrics |
@@ -264,7 +264,7 @@ Planned improvements:
 - Idempotency keys for order creation
 - Outbox pattern for OrderCreated events
 - GitHub Actions CI/CD pipeline
-- Redis for distributed caching (multi-instance)
+- Redis distributed cache — `AddStackExchangeRedisCache` replacing IMemoryCache khi cần multi-instance scaling
 - Background jobs for auto-confirming orders
 - Per-user rate limiting
 

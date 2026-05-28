@@ -26,13 +26,11 @@ public sealed class AdminReportEndpoints : IEndpointGroup
         group.MapGet("/top-products", HandleGetTopProducts)
             .WithName("GetTopProducts").WithSummary("Top products by revenue")
             .HasApiVersion(new ApiVersion(1))
-            .CacheOutput("reports")
             .Produces<List<TopProductRevenueResponse>>();
 
         group.MapGet("/revenue-by-day", HandleGetRevenueByDay)
             .WithName("GetRevenueByDay").WithSummary("Revenue aggregated by day")
             .HasApiVersion(new ApiVersion(1))
-            .CacheOutput("reports")
             .Produces<List<RevenueByDayResponse>>();
     }
 

@@ -1,5 +1,7 @@
 using Mapster;
+using Microsoft.Extensions.Caching.Memory;
 using OrderHub.Application.Common;
+using OrderHub.Application.Common.Caching;
 using OrderHub.Application.Common.Messaging;
 using OrderHub.Application.Common.Persistence;
 using OrderHub.Application.Common.Security;
@@ -14,7 +16,8 @@ public sealed class CreateOrderCommandHandler(
     IUserContext userContext,
     IOrderRepository orderRepository,
     IProductRepository productRepository,
-    IUnitOfWork unitOfWork)
+    IUnitOfWork unitOfWork,
+    IMemoryCache cache)
     : ICommandHandler<CreateOrderCommand, OrderResponse>
 {
     public async Task<Result<OrderResponse>> Handle(CreateOrderCommand request, CancellationToken cancellationToken)
@@ -77,6 +80,9 @@ public sealed class CreateOrderCommandHandler(
             orderRepository.Add(order);
             await unitOfWork.SaveChangesAsync(cancellationToken);
             await unitOfWork.CommitTransactionAsync(cancellationToken);
+
+            cache.InvalidateReports();
+            cache.InvalidateProducts();
 
             return Result<OrderResponse>.Success(order.Adapt<OrderResponse>());
         }

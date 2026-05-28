@@ -33,13 +33,11 @@ public sealed class ProductEndpoints : IEndpointGroup
         group.MapGet("/", HandleGetProducts)
             .WithName("GetProducts").WithSummary("Get paginated product list with filters")
             .HasApiVersion(new ApiVersion(1))
-            .CacheOutput("products")
             .Produces<PagedResult<ProductResponse>>();
 
         group.MapGet("/{id:guid}", HandleGetProduct)
             .WithName("GetProduct").WithSummary("Get product by ID")
             .HasApiVersion(new ApiVersion(1))
-            .CacheOutput("products")
             .Produces<ProductResponse>()
             .ProducesProblem(StatusCodes.Status404NotFound);
 

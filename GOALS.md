@@ -12,7 +12,7 @@
 - [x] Persistence — EF Core DbContext, Fluent API configs, indexes, initial migration, seed data (1 admin + 1 customer + 100 products)
 - [x] Authentication & Authorization — Register/Login/Refresh/Logout, JWT (15 min) + refresh token (7 days), PasswordHasher<T>, role-based auth
 - [x] Product Catalog — CRUD (Admin-only, soft delete), paginated list with filter/search/sort, CQRS + FluentValidation + Mapster
-- [x] Cross-Cutting Concerns — Serilog, global exception handler (RFC 9457 ProblemDetails), Result pattern for business errors, security headers, output caching, response compression, CORS, rate limiting, API versioning, Scalar + Swashbuckle docs, request timeouts
+- [x] Cross-Cutting Concerns — Serilog, global exception handler (RFC 9457 ProblemDetails), Result pattern for business errors, security headers, IMemoryCache handler-level caching with version-key invalidation, response compression, CORS, rate limiting, API versioning, Scalar + Swashbuckle docs, request timeouts
 - [x] Containerization — Multi-stage Dockerfile, docker-compose (App + PostgreSQL), .dockerignore
 - [x] Password complexity (uppercase, lowercase, digit, special char) + JWT key >= 32 chars validation
 
@@ -35,7 +35,7 @@
 
 - [x] `GET /api/v1/admin/reports/top-products?from=&to=` — Top 10 products by revenue
 - [x] `GET /api/v1/admin/reports/revenue-by-day?from=&to=` — Revenue aggregated by day
-- [x] Output Caching (5 min) with invalidation on order create/cancel
+- [x] IMemoryCache handler-level caching — GetProducts (sliding 30s, abs 5 min), GetProductById (sliding 30s, abs 10 min), GetTopProducts (abs 3 min), GetRevenueByDay (abs 3 min)
 
 ### Tests (P0)
 
@@ -87,7 +87,7 @@
 
 - [ ] Idempotency key for order creation
 - [ ] Outbox pattern for OrderCreated event
-- [ ] Redis distributed cache — Redis container in docker-compose, `AddStackExchangeRedisOutputCache` replacing in-memory cache khi cần multi-instance scaling
+- [ ] Redis distributed cache — Redis container in docker-compose, `AddStackExchangeRedisCache` replacing IMemoryCache khi cần multi-instance scaling
 - [ ] GitHub Actions CI pipeline
 
 ---
@@ -105,7 +105,7 @@
 | 7   | Cancel order restores stock (Pending only)                                                       | P0       | [x]    |
 | 8   | Admin order status transitions (Confirmed/Shipped/Delivered)                                     | P0       | [x]    |
 | 9   | Order history for current user (paginated)                                                       | P0       | [x]    |
-| 10  | Admin reports with caching + invalidation                                                        | P1       | [x]    |
+| 10  | Admin reports with caching + invalidation                                                        | P1       | [x]    | — IMemoryCache handler-level caching with version-key invalidation |
 | 11  | Rate limiting on API endpoints (global + per-endpoint)                                           | P0       | [~]    |
 | 12  | Problem Details errors (RFC 9457) — Result pattern + GlobalExceptionHandler, no stack trace leak | P0       | [x]    |
 | 13  | Separate request/response DTOs (no entity exposure)                                              | P0       | [x]    |

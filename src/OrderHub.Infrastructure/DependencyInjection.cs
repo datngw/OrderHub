@@ -46,6 +46,11 @@ public static class DependencyInjection
 
         services.AddHostedService<DatabaseMigrationHostedService>();
 
+        services.AddMemoryCache(options =>
+        {
+            options.SizeLimit = 10_000;
+        });
+
         return services;
     }
 }

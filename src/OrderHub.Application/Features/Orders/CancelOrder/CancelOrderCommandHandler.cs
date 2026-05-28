@@ -1,4 +1,6 @@
+using Microsoft.Extensions.Caching.Memory;
 using OrderHub.Application.Common;
+using OrderHub.Application.Common.Caching;
 using OrderHub.Application.Common.Messaging;
 using OrderHub.Application.Common.Security;
 using OrderHub.Application.Common.Persistence;
@@ -12,7 +14,8 @@ public sealed class CancelOrderCommandHandler(
     IUserContext userContext,
     IOrderRepository orderRepository,
     IProductRepository productRepository,
-    IUnitOfWork unitOfWork)
+    IUnitOfWork unitOfWork,
+    IMemoryCache cache)
     : ICommandHandler<CancelOrderCommand>
 {
     public async Task<Result> Handle(CancelOrderCommand request, CancellationToken cancellationToken)
@@ -48,6 +51,9 @@ public sealed class CancelOrderCommandHandler(
 
             await unitOfWork.SaveChangesAsync(cancellationToken);
             await unitOfWork.CommitTransactionAsync(cancellationToken);
+
+            cache.InvalidateReports();
+            cache.InvalidateProducts();
 
             return Result.Success();
         }

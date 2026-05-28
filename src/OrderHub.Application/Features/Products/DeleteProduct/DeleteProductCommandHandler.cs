@@ -1,4 +1,6 @@
+using Microsoft.Extensions.Caching.Memory;
 using OrderHub.Application.Common;
+using OrderHub.Application.Common.Caching;
 using OrderHub.Application.Common.Messaging;
 using OrderHub.Application.Common.Persistence;
 using OrderHub.Domain.Common;
@@ -6,7 +8,7 @@ using OrderHub.Domain.Products;
 
 namespace OrderHub.Application.Features.Products.DeleteProduct;
 
-public sealed class DeleteProductCommandHandler(IProductRepository productRepository, IUnitOfWork unitOfWork)
+public sealed class DeleteProductCommandHandler(IProductRepository productRepository, IUnitOfWork unitOfWork, IMemoryCache cache)
     : ICommandHandler<DeleteProductCommand>
 {
     public async Task<Result> Handle(DeleteProductCommand request, CancellationToken cancellationToken)
@@ -22,6 +24,8 @@ public sealed class DeleteProductCommandHandler(IProductRepository productReposi
         product.IsActive = false;
 
         await unitOfWork.SaveChangesAsync(cancellationToken);
+
+        cache.InvalidateProducts(request.Id);
 
         return Result.Success();
     }

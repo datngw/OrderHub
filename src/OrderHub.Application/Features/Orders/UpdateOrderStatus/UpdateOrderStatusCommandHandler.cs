@@ -1,4 +1,6 @@
+using Microsoft.Extensions.Caching.Memory;
 using OrderHub.Application.Common;
+using OrderHub.Application.Common.Caching;
 using OrderHub.Application.Common.Messaging;
 using OrderHub.Application.Common.Persistence;
 using OrderHub.Domain.Common;
@@ -8,7 +10,8 @@ namespace OrderHub.Application.Features.Orders.UpdateOrderStatus;
 
 public sealed class UpdateOrderStatusCommandHandler(
     IOrderRepository orderRepository,
-    IUnitOfWork unitOfWork)
+    IUnitOfWork unitOfWork,
+    IMemoryCache cache)
     : ICommandHandler<UpdateOrderStatusCommand>
 {
     private static readonly Dictionary<OrderStatusEnum, OrderStatusEnum> AllowedTransitions = new()
@@ -37,6 +40,8 @@ public sealed class UpdateOrderStatusCommandHandler(
         order.Status = request.NewStatus;
 
         await unitOfWork.SaveChangesAsync(cancellationToken);
+
+        cache.InvalidateReports();
 
         return Result.Success();
     }
