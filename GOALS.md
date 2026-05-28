@@ -18,24 +18,24 @@
 
 ---
 
-## Phase 2 — Order Management, Reports & Testing
+## Phase 2 — Order Management, Reports & Testing `[~]`
 
 > **Objective:** Full order lifecycle with concurrency-safe stock control, admin reports, and test coverage.
 
 ### Order Endpoints (P0)
 
-- [ ] `POST /api/v1/orders` — Atomic creation with pessimistic locking (`SELECT ... FOR UPDATE`), server-side total calculation, price snapshot in OrderItem, stock deduction in same transaction, cache invalidation
-- [ ] `GET /api/v1/orders/me` — Current user's order history, paginated
-- [ ] `GET /api/v1/orders/{id}` — Owner or admin only (custom authorization policy)
-- [ ] `PUT /api/v1/orders/{id}/status` — Admin transitions: `Pending → Confirmed → Shipped → Delivered` with validation
-- [ ] `POST /api/v1/orders/{id}/cancel` — Cancel only if Pending, restore stock in transaction
-- [ ] Full CQRS layer — Commands, queries, validators, DTOs, Mapster mappings (following Product Catalog patterns)
+- [x] `POST /api/v1/orders` — Atomic creation with pessimistic locking (`SELECT ... FOR UPDATE`), server-side total calculation, price snapshot in OrderItem, stock deduction in same transaction, cache invalidation
+- [x] `GET /api/v1/orders/me` — Current user's order history, paginated
+- [x] `GET /api/v1/orders/{id}` — Owner or admin only (custom authorization policy)
+- [x] `PUT /api/v1/orders/{id}/status` — Admin transitions: `Pending → Confirmed → Shipped → Delivered` with validation
+- [x] `POST /api/v1/orders/{id}/cancel` — Cancel only if Pending, restore stock in transaction
+- [x] Full CQRS layer — Commands, queries, validators, DTOs, Mapster mappings (following Product Catalog patterns)
 
 ### Admin Reports (P1)
 
 - [ ] `GET /api/v1/admin/reports/top-products?from=&to=` — Top 10 products by revenue
 - [ ] `GET /api/v1/admin/reports/revenue-by-day?from=&to=` — Revenue aggregated by day
-- [ ] Output Caching (5 min) with invalidation on order create/cancel
+- [~] Output Caching (5 min) with invalidation on order create/cancel — Output cache configured, no admin report endpoints yet
 
 ### Tests (P0)
 
@@ -67,15 +67,15 @@
 ### Observability — Serilog + OpenTelemetry + Jaeger (P0)
 
 - [ ] OpenTelemetry SDK — Tracing (ASP.NET Core, EF Core, HttpClient auto-instrumentation) + Metrics (runtime + custom business meters: `orders.created`, `orders.cancelled`, `stock.oversell_attempts`, `order.creation.duration_ms`)
-- [ ] Serilog OTLP export — `Serilog.Sinks.OpenTelemetry` + `Serilog.Enrichers.Span` for TraceId/SpanId correlation in all log entries
+- [~] Serilog OTLP export — `Serilog.Sinks.OpenTelemetry` + `Serilog.Enrichers.Span` for TraceId/SpanId correlation in all log entries — Package installed, not yet configured in pipeline
 - [ ] Jaeger + Docker config — Jaeger container in `docker-compose.yml` (OTLP port 4317, UI port 16686), `OTEL_*` env vars, `appsettings.json` OpenTelemetry section (enable/disable per environment, sampling rate)
 
 > **Tech Stack:** Serilog (structured logging) + OpenTelemetry SDK (traces + metrics) + Jaeger (visualization) via OTLP export
 
 ### Performance — Database & Query Optimization (P0)
 
-- [ ] **Connection pooling + Query optimization** — Npgsql pooling (`Pooling=true;MinPoolSize=5;MaxPoolSize=100`), `EnableRetryOnFailure()`, `AsNoTracking()` on all read queries, `AsSplitQuery()` on Order includes
-- [ ] **Query completeness** — Migration thêm indexes thiếu (`Orders.Status`, `OrderItems.OrderId`, `OrderItems.ProductId`); verify all list endpoints return `PagedResult<T>`
+- [~] **Connection pooling + Query optimization** — Npgsql pooling (`Pooling=true;MinPoolSize=5;MaxPoolSize=100`), `EnableRetryOnFailure()`, `AsNoTracking()` on all read queries, `AsSplitQuery()` on Order includes — EnableRetryOnFailure + AsNoTracking done, AsSplitQuery not yet
+- [~] **Query completeness** — Migration thêm indexes thiếu (`Orders.Status`, `OrderItems.OrderId`, `OrderItems.ProductId`); verify all list endpoints return `PagedResult<T>` — Indexes exist on OrderItems, Orders.Status and list endpoints paginated
 
 ### Security Hardening (P0)
 
@@ -100,11 +100,11 @@
 | 2   | Register + Login → JWT + refresh token                                                           | P0       | [x]    |
 | 3   | CRUD products (Admin only)                                                                       | P0       | [x]    |
 | 4   | Product list with pagination, filter, search, sort                                               | P0       | [x]    |
-| 5   | Create order with atomic stock deduction + price snapshot                                        | P0       | [ ]    |
+| 5   | Create order with atomic stock deduction + price snapshot                                        | P0       | [x]    |
 | 6   | No oversell under concurrency (50 req / stock=10)                                                | P0       | [ ]    |
-| 7   | Cancel order restores stock (Pending only)                                                       | P0       | [ ]    |
-| 8   | Admin order status transitions (Confirmed/Shipped/Delivered)                                     | P0       | [ ]    |
-| 9   | Order history for current user (paginated)                                                       | P0       | [ ]    |
+| 7   | Cancel order restores stock (Pending only)                                                       | P0       | [x]    |
+| 8   | Admin order status transitions (Confirmed/Shipped/Delivered)                                     | P0       | [x]    |
+| 9   | Order history for current user (paginated)                                                       | P0       | [x]    |
 | 10  | Admin reports with caching + invalidation                                                        | P1       | [ ]    |
 | 11  | Rate limiting on API endpoints (global + per-endpoint)                                           | P0       | [~]    |
 | 12  | Problem Details errors (RFC 9457) — Result pattern + GlobalExceptionHandler, no stack trace leak | P0       | [x]    |
@@ -115,10 +115,10 @@
 | 17  | Health check endpoint (liveness + readiness)                                                     | P1       | [x]    |
 | 18  | Structured logging (Serilog: Info/Warning/Error)                                                 | P0       | [x]    |
 | 19  | Security headers + HTTPS                                                                         | P0       | [x]    |
-| 20  | README with instructions, architecture, trade-offs                                               | P0       | [ ]    |
-| 21  | OpenTelemetry traces + business metrics exported to Jaeger via OTLP                              | P0       | [ ]    |
-| 22  | Serilog logs correlated with traces (TraceId + SpanId)                                           | P0       | [ ]    |
-| 23  | DB connection pooling + EF retry + AsNoTracking/SplitQuery on all queries                        | P0       | [ ]    |
-| 24  | Database indexes cover all query patterns + all list endpoints paginated                         | P0       | [ ]    |
+| 20  | README with instructions, architecture, trade-offs                                               | P0       | [x]    |
+| 21  | OpenTelemetry traces + business metrics exported to Jaeger via OTLP                              | P0       | [~]    |
+| 22  | Serilog logs correlated with traces (TraceId + SpanId)                                           | P0       | [~]    |
+| 23  | DB connection pooling + EF retry + AsNoTracking/SplitQuery on all queries                        | P0       | [~]    |
+| 24  | Database indexes cover all query patterns + all list endpoints paginated                         | P0       | [~]    |
 | 25  | Auth endpoints rate-limited separately (login 5/min, register 3/min)                             | P0       | [ ]    |
 | 26  | Request size limited globally, string inputs sanitized against XSS                               | P0       | [ ]    |
