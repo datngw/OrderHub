@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
+using OrderHub.Application.Common;
 using OrderHub.Application.Common.Security;
 using OrderHub.Application.Common.Persistence;
 using OrderHub.Domain.Orders;
@@ -29,6 +30,7 @@ public static class DependencyInjection
         services.Configure<JwtOptions>(configuration.GetSection(JwtOptions.SectionName));
         services.AddSingleton<IValidateOptions<JwtOptions>, JwtOptionsValidator>();
         services.AddSingleton(TimeProvider.System);
+        services.AddSingleton<IDateTimeProvider, DateTimeProvider>();
 
         services.AddScoped<IOrderRepository, OrderRepository>();
         services.AddScoped<IProductRepository, ProductRepository>();

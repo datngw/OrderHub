@@ -35,7 +35,6 @@ public sealed class UpdateOrderStatusCommandHandler(
             return Result.Failure(OrderErrors.InvalidStatusTransition(order.Status, request.NewStatus));
 
         order.Status = request.NewStatus;
-        order.UpdatedAt = DateTime.UtcNow;
 
         await unitOfWork.SaveChangesAsync(cancellationToken);
 

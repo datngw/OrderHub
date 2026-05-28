@@ -16,8 +16,10 @@ public sealed class DeleteProductCommandHandler(IProductRepository productReposi
         if (product is null)
             return Result.Failure(ProductErrors.NotFoundById(request.Id));
 
+        if (!product.IsActive)
+            return Result.Success();
+
         product.IsActive = false;
-        product.UpdatedAt = DateTime.UtcNow;
 
         await unitOfWork.SaveChangesAsync(cancellationToken);
 

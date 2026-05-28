@@ -20,6 +20,6 @@ public sealed class CreateProductCommandHandler(IProductRepository productReposi
         productRepository.Add(product);
         await unitOfWork.SaveChangesAsync(cancellationToken);
 
-        return product.Adapt<ProductResponse>();
+        return Result<ProductResponse>.Success(product.Adapt<ProductResponse>());
     }
 }

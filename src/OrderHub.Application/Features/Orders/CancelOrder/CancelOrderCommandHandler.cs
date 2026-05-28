@@ -52,7 +52,6 @@ public sealed class CancelOrderCommandHandler(
             }
 
             trackedOrder.Status = OrderStatusEnum.Cancelled;
-            trackedOrder.UpdatedAt = DateTime.UtcNow;
 
             await unitOfWork.SaveChangesAsync(cancellationToken);
             await unitOfWork.CommitTransactionAsync(cancellationToken);

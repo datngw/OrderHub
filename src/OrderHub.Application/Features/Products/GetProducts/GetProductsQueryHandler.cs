@@ -24,12 +24,12 @@ public sealed class GetProductsQueryHandler(IProductRepository productRepository
             request.PageSize,
             cancellationToken);
 
-        return new PagedResult<ProductResponse>
+        return Result<PagedResult<ProductResponse>>.Success(new PagedResult<ProductResponse>
         {
             Items = items.Adapt<List<ProductResponse>>(),
             TotalCount = totalCount,
             Page = request.Page,
             PageSize = request.PageSize
-        };
+        });
     }
 }

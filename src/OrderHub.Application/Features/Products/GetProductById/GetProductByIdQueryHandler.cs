@@ -17,6 +17,6 @@ public sealed class GetProductByIdQueryHandler(IProductRepository productReposit
         if (product is null || !product.IsActive)
             return Result<ProductResponse>.Failure(ProductErrors.NotFoundById(request.Id));
 
-        return product.Adapt<ProductResponse>();
+        return Result<ProductResponse>.Success(product.Adapt<ProductResponse>());
     }
 }

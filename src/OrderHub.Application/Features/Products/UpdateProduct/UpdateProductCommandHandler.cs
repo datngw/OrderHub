@@ -19,7 +19,6 @@ public sealed class UpdateProductCommandHandler(IProductRepository productReposi
             return Result<ProductResponse>.Failure(ProductErrors.NotFoundById(request.Id));
 
         request.Adapt(product);
-        product.UpdatedAt = DateTime.UtcNow;
 
         await unitOfWork.SaveChangesAsync(cancellationToken);
 
