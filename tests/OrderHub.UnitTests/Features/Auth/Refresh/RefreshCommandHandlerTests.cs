@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Moq;
 using FluentAssertions;
@@ -32,13 +33,15 @@ public class RefreshCommandHandlerTests
         _tokenService = new Mock<ITokenService>();
         _jwtOptions = MockHelpers.CreateJwtOptions();
         _clock = new Mock<IDateTimeProvider>();
+        var logger = Mock.Of<ILogger<RefreshCommandHandler>>();
 
         _sut = new RefreshCommandHandler(
             _refreshTokenRepository.Object,
             _unitOfWork.Object,
             _tokenService.Object,
             _jwtOptions,
-            _clock.Object);
+            _clock.Object,
+            logger);
     }
 
     private static User CreateTestUser()

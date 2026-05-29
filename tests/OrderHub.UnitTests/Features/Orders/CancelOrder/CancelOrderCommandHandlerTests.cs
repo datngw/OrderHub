@@ -1,6 +1,7 @@
 using Moq;
 using FluentAssertions;
 using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Logging;
 using OrderHub.Application.Common.Persistence;
 using OrderHub.Application.Common.Security;
 using OrderHub.Application.Features.Orders.CancelOrder;
@@ -29,13 +30,15 @@ public class CancelOrderCommandHandlerTests
         _productRepositoryMock = new Mock<IProductRepository>();
         _unitOfWorkMock = new Mock<IUnitOfWork>();
         _cache = MockHelpers.CreateMemoryCache();
+        var logger = Mock.Of<ILogger<CancelOrderCommandHandler>>();
 
         _handler = new CancelOrderCommandHandler(
             _userContextMock.Object,
             _orderRepositoryMock.Object,
             _productRepositoryMock.Object,
             _unitOfWorkMock.Object,
-            _cache);
+            _cache,
+            logger);
     }
 
     [Fact]

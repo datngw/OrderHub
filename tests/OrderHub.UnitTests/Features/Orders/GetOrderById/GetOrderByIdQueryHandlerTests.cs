@@ -1,5 +1,6 @@
 using Moq;
 using FluentAssertions;
+using Microsoft.Extensions.Logging;
 using OrderHub.Application.Common.Security;
 using OrderHub.Application.Features.Orders;
 using OrderHub.Application.Features.Orders.GetOrderById;
@@ -22,10 +23,12 @@ public class GetOrderByIdQueryHandlerTests
 
         _userContextMock = new Mock<IUserContext>();
         _orderRepositoryMock = new Mock<IOrderRepository>();
+        var logger = Mock.Of<ILogger<GetOrderByIdQueryHandler>>();
 
         _handler = new GetOrderByIdQueryHandler(
             _userContextMock.Object,
-            _orderRepositoryMock.Object);
+            _orderRepositoryMock.Object,
+            logger);
     }
 
     [Fact]

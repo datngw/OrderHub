@@ -1,5 +1,6 @@
 using Moq;
 using FluentAssertions;
+using Microsoft.Extensions.Logging;
 using OrderHub.Application.Common.Persistence;
 using OrderHub.Application.Features.Auth.Logout;
 using OrderHub.Domain.Common;
@@ -22,10 +23,12 @@ public class LogoutCommandHandlerTests
 
         _refreshTokenRepository = new Mock<IRefreshTokenRepository>();
         _unitOfWork = new Mock<IUnitOfWork>();
+        var logger = Mock.Of<ILogger<LogoutCommandHandler>>();
 
         _sut = new LogoutCommandHandler(
             _refreshTokenRepository.Object,
-            _unitOfWork.Object);
+            _unitOfWork.Object,
+            logger);
     }
 
     private static RefreshToken CreateActiveRefreshToken()

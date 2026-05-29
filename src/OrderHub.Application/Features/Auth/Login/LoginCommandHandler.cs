@@ -1,4 +1,5 @@
 using Mapster;
+using Microsoft.Extensions.Logging;
 using OrderHub.Application.Common;
 using OrderHub.Application.Common.Messaging;
 using OrderHub.Application.Common.Security;
@@ -17,7 +18,8 @@ public sealed class LoginCommandHandler(
     ITokenService tokenService,
     IPasswordHasher passwordHasher,
     IOptions<JwtOptions> jwtOptions,
-    IDateTimeProvider clock)
+    IDateTimeProvider clock,
+    ILogger<LoginCommandHandler> logger)
     : ICommandHandler<LoginCommand, AuthResponse>
 {
     private readonly JwtOptions _jwtOptions = jwtOptions.Value;
@@ -27,7 +29,10 @@ public sealed class LoginCommandHandler(
         var user = await userRepository.GetByEmailAsync(request.Email.ToLowerInvariant(), cancellationToken);
 
         if (user is null || !passwordHasher.VerifyPassword(request.Password, user.PasswordHash))
+        {
+            logger.LogWarning("Login failed for {Email}: invalid credentials", request.Email);
             return Result<AuthResponse>.Failure(AuthErrors.InvalidCredentials);
+        }
 
         var accessToken = tokenService.GenerateAccessToken(user.Id, user.Email, user.Role.ToString());
         var refreshToken = RefreshToken.Create(
@@ -37,6 +42,8 @@ public sealed class LoginCommandHandler(
 
         refreshTokenRepository.Add(refreshToken);
         await unitOfWork.SaveChangesAsync(cancellationToken);
+
+        logger.LogInformation("User {Email} logged in successfully", user.Email);
 
         return Result<AuthResponse>.Success(user.Adapt<AuthResponse>() with { AccessToken = accessToken, RefreshToken = refreshToken.Token });
     }

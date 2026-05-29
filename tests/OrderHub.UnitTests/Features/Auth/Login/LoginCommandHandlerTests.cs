@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Moq;
 using FluentAssertions;
@@ -36,6 +37,7 @@ public class LoginCommandHandlerTests
         _passwordHasher = new Mock<IPasswordHasher>();
         _jwtOptions = MockHelpers.CreateJwtOptions();
         _clock = new Mock<IDateTimeProvider>();
+        var logger = Mock.Of<ILogger<LoginCommandHandler>>();
 
         _sut = new LoginCommandHandler(
             _userRepository.Object,
@@ -44,7 +46,8 @@ public class LoginCommandHandlerTests
             _tokenService.Object,
             _passwordHasher.Object,
             _jwtOptions,
-            _clock.Object);
+            _clock.Object,
+            logger);
     }
 
     private static User CreateTestUser()

@@ -1,4 +1,5 @@
 using Mapster;
+using Microsoft.Extensions.Logging;
 using OrderHub.Application.Common;
 using OrderHub.Application.Common.Messaging;
 using OrderHub.Application.Common.Security;
@@ -18,7 +19,8 @@ public sealed class RegisterCommandHandler(
     ITokenService tokenService,
     IPasswordHasher passwordHasher,
     IOptions<JwtOptions> jwtOptions,
-    IDateTimeProvider clock)
+    IDateTimeProvider clock,
+    ILogger<RegisterCommandHandler> logger)
     : ICommandHandler<RegisterCommand, AuthResponse>
 {
     private readonly JwtOptions _jwtOptions = jwtOptions.Value;
@@ -26,7 +28,10 @@ public sealed class RegisterCommandHandler(
     public async Task<Result<AuthResponse>> Handle(RegisterCommand request, CancellationToken cancellationToken)
     {
         if (await userRepository.ExistsByEmailAsync(request.Email.ToLowerInvariant(), cancellationToken))
+        {
+            logger.LogWarning("Registration failed: email already exists for {Email}", request.Email);
             return Result<AuthResponse>.Failure(AuthErrors.EmailAlreadyExists);
+        }
 
         var user = new User
         {
@@ -50,8 +55,11 @@ public sealed class RegisterCommandHandler(
         }
         catch (DbUpdateException)
         {
+            logger.LogWarning("Registration conflict on duplicate email: {Email}", request.Email);
             return Result<AuthResponse>.Failure(AuthErrors.EmailAlreadyExists);
         }
+
+        logger.LogInformation("User registered successfully: {Email} with role {Role}", user.Email, user.Role);
 
         var accessToken = tokenService.GenerateAccessToken(user.Id, user.Email, user.Role.ToString());
 

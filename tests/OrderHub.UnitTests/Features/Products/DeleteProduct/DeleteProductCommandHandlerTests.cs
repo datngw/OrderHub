@@ -1,6 +1,7 @@
 using Moq;
 using FluentAssertions;
 using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Logging;
 using OrderHub.Application.Common.Persistence;
 using OrderHub.Application.Features.Products;
 using OrderHub.Application.Features.Products.DeleteProduct;
@@ -23,10 +24,12 @@ public class DeleteProductCommandHandlerTests
         _productRepositoryMock = new Mock<IProductRepository>();
         _unitOfWorkMock = new Mock<IUnitOfWork>();
         _cache = MockHelpers.CreateMemoryCache();
+        var logger = Mock.Of<ILogger<DeleteProductCommandHandler>>();
         _handler = new DeleteProductCommandHandler(
             _productRepositoryMock.Object,
             _unitOfWorkMock.Object,
-            _cache);
+            _cache,
+            logger);
     }
 
     [Fact]

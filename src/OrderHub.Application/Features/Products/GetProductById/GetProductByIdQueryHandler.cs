@@ -1,5 +1,6 @@
 using Mapster;
 using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Logging;
 using OrderHub.Application.Common;
 using OrderHub.Application.Common.Caching;
 using OrderHub.Application.Common.Messaging;
@@ -9,7 +10,10 @@ using OrderHub.Domain.Products;
 
 namespace OrderHub.Application.Features.Products.GetProductById;
 
-public sealed class GetProductByIdQueryHandler(IProductRepository productRepository, IMemoryCache cache)
+public sealed class GetProductByIdQueryHandler(
+    IProductRepository productRepository,
+    IMemoryCache cache,
+    ILogger<GetProductByIdQueryHandler> logger)
     : IQueryHandler<GetProductByIdQuery, ProductResponse>
 {
     public async Task<Result<ProductResponse>> Handle(GetProductByIdQuery request, CancellationToken cancellationToken)
@@ -27,7 +31,10 @@ public sealed class GetProductByIdQueryHandler(IProductRepository productReposit
         });
 
         if (cached is null)
+        {
+            logger.LogInformation("Product lookup: product {ProductId} not found", request.Id);
             return Result<ProductResponse>.Failure(ProductErrors.NotFoundById(request.Id));
+        }
 
         return Result<ProductResponse>.Success(cached);
     }

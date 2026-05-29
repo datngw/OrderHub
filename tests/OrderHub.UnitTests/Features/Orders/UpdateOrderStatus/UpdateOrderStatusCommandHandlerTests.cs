@@ -1,6 +1,7 @@
 using Moq;
 using FluentAssertions;
 using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Logging;
 using OrderHub.Application.Common.Persistence;
 using OrderHub.Application.Features.Orders.UpdateOrderStatus;
 using OrderHub.Domain.Common;
@@ -23,11 +24,13 @@ public class UpdateOrderStatusCommandHandlerTests
         _orderRepositoryMock = new Mock<IOrderRepository>();
         _unitOfWorkMock = new Mock<IUnitOfWork>();
         _cache = MockHelpers.CreateMemoryCache();
+        var logger = Mock.Of<ILogger<UpdateOrderStatusCommandHandler>>();
 
         _handler = new UpdateOrderStatusCommandHandler(
             _orderRepositoryMock.Object,
             _unitOfWorkMock.Object,
-            _cache);
+            _cache,
+            logger);
     }
 
     [Fact]

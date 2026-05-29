@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Moq;
 using FluentAssertions;
@@ -37,6 +38,7 @@ public class RegisterCommandHandlerTests
         _passwordHasher = new Mock<IPasswordHasher>();
         _jwtOptions = MockHelpers.CreateJwtOptions();
         _clock = new Mock<IDateTimeProvider>();
+        var logger = Mock.Of<ILogger<RegisterCommandHandler>>();
 
         _sut = new RegisterCommandHandler(
             _userRepository.Object,
@@ -45,7 +47,8 @@ public class RegisterCommandHandlerTests
             _tokenService.Object,
             _passwordHasher.Object,
             _jwtOptions,
-            _clock.Object);
+            _clock.Object,
+            logger);
     }
 
     [Fact]

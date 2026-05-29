@@ -1,9 +1,13 @@
+using System.Security.Claims;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using NetEscapades.AspNetCore.SecurityHeaders;
 using OrderHub.Api.Common;
+using OrderHub.Api.Logging;
+using OrderHub.Api.Middlewares;
 using Scalar.AspNetCore;
 using Serilog;
+using Serilog.Events;
 
 namespace OrderHub.Api;
 
@@ -11,6 +15,7 @@ public static class AppMiddlewareConfiguration
 {
     public static WebApplication UseApiMiddleware(this WebApplication app)
     {
+        UseRequestLogging(app);           // Outermost — sees final status code after exception handling
         UseSecurityAndErrorHandling(app);
         UseSwaggerIfDevelopment(app);
         UseMiddlewarePipeline(app);
@@ -47,12 +52,35 @@ public static class AppMiddlewareConfiguration
 
     private static void UseMiddlewarePipeline(WebApplication app)
     {
+        app.UseMiddleware<CorrelationIdMiddleware>();
         app.UseHttpsRedirection();
         app.UseHsts();
         app.UseResponseCompression();
         app.UseRateLimiter();
         app.UseRequestTimeouts();
         app.UseCors("Default");
+    }
+
+    private static void UseRequestLogging(WebApplication app)
+    {
+        app.UseSerilogRequestLogging(options =>
+        {
+            options.EnrichDiagnosticContext = (diagnosticContext, httpContext) =>
+            {
+                diagnosticContext.Set("UserId",
+                    httpContext.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "anonymous");
+                diagnosticContext.Set("RequestHost", httpContext.Request.Host.Value);
+                diagnosticContext.Set("UserAgent", httpContext.Request.Headers.UserAgent.ToString());
+            };
+
+            options.GetLevel = (httpContext, elapsed, ex) =>
+            {
+                if (httpContext.Request.Path.StartsWithSegments("/health"))
+                    return LogEventLevel.Verbose;
+
+                return elapsed > 500 ? LogEventLevel.Warning : LogEventLevel.Information;
+            };
+        });
     }
 
     private static void UseAuthenticationAndAuthorization(WebApplication app)
@@ -63,7 +91,10 @@ public static class AppMiddlewareConfiguration
 
     private static void UseHealthChecks(WebApplication app)
     {
-        app.MapHealthChecks("/health");
+        app.MapHealthChecks("/health/live", new HealthCheckOptions
+        {
+            Predicate = _ => false
+        });
         app.MapHealthChecks("/health/ready", new HealthCheckOptions
         {
             Predicate = check => check.Tags.Contains("ready")
@@ -72,15 +103,12 @@ public static class AppMiddlewareConfiguration
 
     public static WebApplicationBuilder ConfigureSerilog(this WebApplicationBuilder builder)
     {
-        Log.Logger = new LoggerConfiguration()
-            .Enrich.FromLogContext()
-            .Enrich.WithMachineName()
-            .Enrich.WithEnvironmentName()
-            .WriteTo.Console(
-                outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] [{SourceContext}] [{MachineName}] {Message:lj}{NewLine}{Exception}")
-            .CreateLogger();
-
-        builder.Host.UseSerilog();
+        builder.Host.UseSerilog((context, loggerConfig) =>
+        {
+            loggerConfig.ReadFrom.Configuration(context.Configuration);
+            loggerConfig.Destructure.With<SensitiveDataDestructuringPolicy>();
+            loggerConfig.Filter.With<SensitiveLogEventFilter>();
+        });
 
         return builder;
     }

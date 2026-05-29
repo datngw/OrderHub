@@ -1,4 +1,5 @@
 using Mapster;
+using Microsoft.Extensions.Logging;
 using OrderHub.Application.Common;
 using OrderHub.Application.Common.Messaging;
 using OrderHub.Application.Common.Security;
@@ -15,7 +16,8 @@ public sealed class RefreshCommandHandler(
     IUnitOfWork unitOfWork,
     ITokenService tokenService,
     IOptions<JwtOptions> jwtOptions,
-    IDateTimeProvider clock)
+    IDateTimeProvider clock,
+    ILogger<RefreshCommandHandler> logger)
     : ICommandHandler<RefreshCommand, AuthResponse>
 {
     private readonly JwtOptions _jwtOptions = jwtOptions.Value;
@@ -25,19 +27,26 @@ public sealed class RefreshCommandHandler(
         var existingToken = await refreshTokenRepository.GetByTokenWithUserAsync(request.Token, cancellationToken);
 
         if (existingToken is null)
+        {
+            logger.LogWarning("Token refresh failed: refresh token not found");
             return Result<AuthResponse>.Failure(AuthErrors.InvalidRefreshToken);
+        }
 
         var now = clock.UtcNow;
 
         if (existingToken.IsRevoked)
         {
+            logger.LogWarning("Token reuse detected for user {UserId}, revoking entire token family", existingToken.UserId);
             await RevokeTokenFamilyAsync(existingToken, cancellationToken);
             await unitOfWork.SaveChangesAsync(cancellationToken);
             return Result<AuthResponse>.Failure(AuthErrors.RefreshTokenRevoked);
         }
 
         if (existingToken.IsExpired(now))
+        {
+            logger.LogWarning("Token refresh failed: token expired for user {UserId}", existingToken.UserId);
             return Result<AuthResponse>.Failure(AuthErrors.RefreshTokenExpired);
+        }
 
         var newRefreshToken = RefreshToken.Create(
             tokenService.GenerateRefreshToken(),
@@ -50,6 +59,8 @@ public sealed class RefreshCommandHandler(
 
         var user = existingToken.User;
         var accessToken = tokenService.GenerateAccessToken(user.Id, user.Email, user.Role.ToString());
+
+        logger.LogInformation("Token refreshed for user {UserId}", existingToken.UserId);
 
         return Result<AuthResponse>.Success(user.Adapt<AuthResponse>() with { AccessToken = accessToken, RefreshToken = newRefreshToken.Token });
     }

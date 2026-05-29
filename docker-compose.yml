@@ -48,5 +48,18 @@ services:
       orderhub-db:
         condition: service_healthy
 
+  orderhub-seq:
+    image: datalust/seq:latest
+    container_name: orderhub-seq
+    environment:
+      - ACCEPT_EULA=Y
+      - SEQ_FIRSTRUN_ADMINPASSWORD=${SEQ_ADMIN_PASSWORD:-admin}
+    ports:
+      - "5341:5341"
+      - "8081:80"
+    volumes:
+      - seq-data:/data
+
 volumes:
   orderhub-db-data:
+  seq-data:

@@ -2,24 +2,42 @@ using OrderHub.Api;
 using OrderHub.Application;
 using OrderHub.Application.Common.Security;
 using OrderHub.Infrastructure;
+using Serilog;
 
-var builder = WebApplication.CreateBuilder(args);
+Log.Logger = new LoggerConfiguration()
+    .WriteTo.Console()
+    .CreateBootstrapLogger();
 
-builder.ConfigureSerilog();
+try
+{
+    Log.Information("Starting OrderHub API");
 
-builder.Services.AddApplicationServices();
-builder.Services.AddInfrastructureServices(builder.Configuration);
-builder.Services.AddApiServices(builder.Configuration);
+    var builder = WebApplication.CreateBuilder(args);
 
-builder.Services
-    .AddOptions<JwtOptions>()
-    .BindConfiguration(JwtOptions.SectionName)
-    .ValidateOnStart();
+    builder.ConfigureSerilog();
 
-var app = builder.Build();
+    builder.Services.AddApplicationServices();
+    builder.Services.AddInfrastructureServices(builder.Configuration);
+    builder.Services.AddApiServices(builder.Configuration);
 
-app.UseApiMiddleware();
+    builder.Services
+        .AddOptions<JwtOptions>()
+        .BindConfiguration(JwtOptions.SectionName)
+        .ValidateOnStart();
 
-app.Run();
+    var app = builder.Build();
+
+    app.UseApiMiddleware();
+
+    app.Run();
+}
+catch (Exception ex)
+{
+    Log.Fatal(ex, "Application terminated unexpectedly");
+}
+finally
+{
+    Log.CloseAndFlush();
+}
 
 public partial class Program;

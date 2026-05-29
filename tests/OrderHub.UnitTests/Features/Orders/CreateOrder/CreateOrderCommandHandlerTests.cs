@@ -2,6 +2,7 @@ using Mapster;
 using Moq;
 using FluentAssertions;
 using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Logging;
 using OrderHub.Application.Common.Persistence;
 using OrderHub.Application.Common.Security;
 using OrderHub.Application.Features.Orders;
@@ -31,13 +32,15 @@ public class CreateOrderCommandHandlerTests
         _productRepositoryMock = new Mock<IProductRepository>();
         _unitOfWorkMock = new Mock<IUnitOfWork>();
         _cache = MockHelpers.CreateMemoryCache();
+        var logger = Mock.Of<ILogger<CreateOrderCommandHandler>>();
 
         _handler = new CreateOrderCommandHandler(
             _userContextMock.Object,
             _orderRepositoryMock.Object,
             _productRepositoryMock.Object,
             _unitOfWorkMock.Object,
-            _cache);
+            _cache,
+            logger);
     }
 
     [Fact]
