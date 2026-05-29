@@ -51,9 +51,9 @@
 
 > **Objective:** API documentation, code quality, observability, performance, security hardening, and project docs.
 
-### API Documentation (P0)
+### API Documentation (P0) `[x]`
 
-- [ ] `OrderHub.http` file covering all endpoints
+- [x] `OrderHub.http` file covering all endpoints — 13 API endpoints + 2 health checks, organized by feature group with correct auth requirements, realistic example payloads matching validation rules, and pagination/filter/sort query parameter examples
 
 ### Documentation (P0)
 
