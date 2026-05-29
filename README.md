@@ -42,23 +42,23 @@ Key patterns in use:
 
 ## Tech Stack
 
-| Area              | Technology                                         | Version / Notes                                      |
-| ----------------- | -------------------------------------------------- | ---------------------------------------------------- |
-| Runtime           | .NET (LTS)                                         | 8.0                                                  |
-| Database          | PostgreSQL                                         | 16 (Alpine)                                          |
-| ORM               | EF Core + Npgsql                                   | 8.0.11                                               |
-| Auth              | JWT + PasswordHasher\<T\>                          | 15 min access + 7 day refresh                        |
-| Validation        | FluentValidation                                   | 12.1.1                                               |
-| Mapping           | Mapster                                            | 10.0.7                                               |
-| CQRS              | MediatR                                            | 14.1.0                                               |
-| Caching           | IMemoryCache (handler-level, version-key pattern)  | SizeLimit 10K entries                                |
-| Logging           | Serilog → Console + File (JSON) + Seq (Dev)        | Enrichers: Environment, Process, Thread, Span, Exceptions |
-| HTML Sanitization | HtmlSanitizer                                      | 9.0.892                                              |
-| API Docs          | Scalar + Swashbuckle                               | Scalar 2.14.14, Swashbuckle 10.1.7                  |
-| Versioning        | Asp.Versioning (URL segment)                       | 8.1.0                                                |
-| Security Headers  | NetEscapades.AspNetCore.SecurityHeaders            | 1.3.1                                                |
-| Testing           | xUnit + FluentAssertions + Moq + Testcontainers    | FluentAssertions 8.10.0                              |
-| Containers        | Docker + docker-compose                            | Multi-stage build                                    |
+| Area              | Technology                                        | Version / Notes                                           |
+| ----------------- | ------------------------------------------------- | --------------------------------------------------------- |
+| Runtime           | .NET (LTS)                                        | 8.0                                                       |
+| Database          | PostgreSQL                                        | 16 (Alpine)                                               |
+| ORM               | EF Core + Npgsql                                  | 8.0.11                                                    |
+| Auth              | JWT + PasswordHasher\<T\>                         | 15 min access + 7 day refresh                             |
+| Validation        | FluentValidation                                  | 12.1.1                                                    |
+| Mapping           | Mapster                                           | 10.0.7                                                    |
+| CQRS              | MediatR                                           | 14.1.0                                                    |
+| Caching           | IMemoryCache (handler-level, version-key pattern) | SizeLimit 10K entries                                     |
+| Logging           | Serilog → Console + File (JSON) + Seq (Dev)       | Enrichers: Environment, Process, Thread, Span, Exceptions |
+| HTML Sanitization | HtmlSanitizer                                     | 9.0.892                                                   |
+| API Docs          | Scalar + Swashbuckle                              | Scalar 2.14.14, Swashbuckle 10.1.7                        |
+| Versioning        | Asp.Versioning (URL segment)                      | 8.1.0                                                     |
+| Security Headers  | NetEscapades.AspNetCore.SecurityHeaders           | 1.3.1                                                     |
+| Testing           | xUnit + FluentAssertions + Moq + Testcontainers   | FluentAssertions 8.10.0                                   |
+| Containers        | Docker + docker-compose                           | Multi-stage build                                         |
 
 ---
 
@@ -191,10 +191,10 @@ When running locally without Docker, use .NET User Secrets or environment variab
 
 ### Health
 
-| Method | Endpoint          | Description                            |
-| ------ | ----------------- | -------------------------------------- |
-| GET    | `/health/live`    | Liveness probe                         |
-| GET    | `/health/ready`   | Readiness probe (checks DB connection) |
+| Method | Endpoint        | Description                            |
+| ------ | --------------- | -------------------------------------- |
+| GET    | `/health/live`  | Liveness probe                         |
+| GET    | `/health/ready` | Readiness probe (checks DB connection) |
 
 ---
 
@@ -202,9 +202,9 @@ When running locally without Docker, use .NET User Secrets or environment variab
 
 Structured logging via **Serilog** with multiple sinks and sensitive data redaction.
 
-| Signal | Source                              | Details                                                            |
-| ------ | ----------------------------------- | ------------------------------------------------------------------ |
-| Logs   | Serilog → Console + File + Seq      | JSON structured logs, rolling files (100MB/14d), Seq UI in Dev     |
+| Signal | Source                         | Details                                                        |
+| ------ | ------------------------------ | -------------------------------------------------------------- |
+| Logs   | Serilog → Console + File + Seq | JSON structured logs, rolling files (100MB/14d), Seq UI in Dev |
 
 ### Serilog Enrichers
 
@@ -245,16 +245,16 @@ OrderHub/
 
 ## Design Decisions
 
-| Decision                           | Rationale                                                                                         |
-| ---------------------------------- | ------------------------------------------------------------------------------------------------- |
-| PostgreSQL over SQL Server         | Open-source, mature row-level locking, no licensing cost                                          |
-| Pessimistic locking for stock      | Guarantees no oversell under concurrency; correctness over throughput                             |
-| Mapster over AutoMapper            | Compile-time code generation, less runtime reflection                                             |
+| Decision                           | Rationale                                                                                                                                                          |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| PostgreSQL over SQL Server         | Open-source, mature row-level locking, no licensing cost                                                                                                           |
+| Pessimistic locking for stock      | Guarantees no oversell under concurrency; correctness over throughput                                                                                              |
+| Mapster over AutoMapper            | Compile-time code generation, less runtime reflection                                                                                                              |
 | IMemoryCache over Output Caching   | Handler-level caching stores domain objects, reusable across endpoints; version-key pattern for prefix invalidation; migrate to HybridCache (.NET 9+) when scaling |
-| PasswordHasher\<T\> over BCrypt    | Built-in ASP.NET Core, auto-upgradable hash format, no external dependency                        |
-| Specific Repository + Unit of Work | Focused contracts per entity, explicit transaction boundaries, easier to test                     |
-| Serilog + Seq                      | Serilog for mature structured logging; Seq for local Dev log visualization and search             |
-| HtmlSanitizer for XSS prevention   | Mature HTML sanitization library, strips all HTML tags from input strings                         |
+| PasswordHasher\<T\> over BCrypt    | Built-in ASP.NET Core, auto-upgradable hash format, no external dependency                                                                                         |
+| Specific Repository + Unit of Work | Focused contracts per entity, explicit transaction boundaries, easier to test                                                                                      |
+| Serilog + Seq                      | Serilog for mature structured logging; Seq for local Dev log visualization and search                                                                              |
+| HtmlSanitizer for XSS prevention   | Mature HTML sanitization library, strips all HTML tags from input strings                                                                                          |
 
 ---
 
@@ -262,10 +262,10 @@ OrderHub/
 
 On first migration, two accounts are seeded for testing:
 
-| Role     | Email               | Password    |
-| -------- | ------------------- | ----------- |
-| Admin    | `admin@orderhub.vn` | `Admin@123` |
-| Customer | `user@orderhub.vn`  | `User@123`  |
+| Role     | Email                   | Password    |
+| -------- | ----------------------- | ----------- |
+| Admin    | `admin@orderhub.com`    | `Admin@123` |
+| Customer | `customer@orderhub.com` | `User@123`  |
 
 Change these before deploying to any shared environment.
 
