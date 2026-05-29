@@ -5,7 +5,7 @@ import type * as Preset from '@docusaurus/preset-classic';
 const config: Config = {
   title: 'OrderHub Documentation',
   tagline: 'Central Order Management API for E-Commerce',
-  favicon: 'img/favicon.ico',
+  favicon: 'img/bouncy-ordering-groceries-completed.svg',
 
   future: {
     v4: true,
@@ -75,7 +75,7 @@ const config: Config = {
           position: 'left',
         },
         {
-          href: 'https://github.com/FTI/OrderHub',
+          href: 'https://github.com/datngw/OrderHub',
           label: 'GitHub',
           position: 'right',
         },
@@ -106,7 +106,7 @@ const config: Config = {
           items: [
             {
               label: 'GitHub',
-              href: 'https://github.com/FTI/OrderHub',
+              href: 'https://github.com/datngw/OrderHub',
             },
           ],
         },
