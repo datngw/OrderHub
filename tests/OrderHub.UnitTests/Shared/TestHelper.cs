@@ -1,7 +1,7 @@
 using Mapster;
 using OrderHub.Application;
 
-namespace OrderHub.UnitTests.Helpers;
+namespace OrderHub.UnitTests.Shared;
 
 public static class TestHelper
 {

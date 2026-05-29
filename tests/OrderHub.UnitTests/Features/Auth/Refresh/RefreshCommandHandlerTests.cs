@@ -9,7 +9,7 @@ using OrderHub.Application.Features.Auth;
 using OrderHub.Application.Features.Auth.Refresh;
 using OrderHub.Domain.Common;
 using OrderHub.Domain.Users;
-using OrderHub.UnitTests.Helpers;
+using OrderHub.UnitTests.Shared;
 
 namespace OrderHub.UnitTests.Features.Auth.Refresh;
 

@@ -8,7 +8,7 @@ using OrderHub.Application.Features.Products;
 using OrderHub.Application.Features.Products.CreateProduct;
 using OrderHub.Domain.Common;
 using OrderHub.Domain.Products;
-using OrderHub.UnitTests.Helpers;
+using OrderHub.UnitTests.Shared;
 
 namespace OrderHub.UnitTests.Features.Products.CreateProduct;
 

@@ -6,7 +6,7 @@ using OrderHub.Application.Features.Orders;
 using OrderHub.Application.Features.Orders.GetMyOrders;
 using OrderHub.Domain.Orders;
 using OrderHub.Domain.Products;
-using OrderHub.UnitTests.Helpers;
+using OrderHub.UnitTests.Shared;
 
 namespace OrderHub.UnitTests.Features.Orders.GetMyOrders;
 

@@ -2,7 +2,7 @@ using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
 using OrderHub.Application.Common.Security;
 
-namespace OrderHub.UnitTests.Helpers;
+namespace OrderHub.UnitTests.Shared;
 
 public static class MockHelpers
 {

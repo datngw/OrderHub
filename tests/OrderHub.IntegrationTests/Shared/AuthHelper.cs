@@ -5,7 +5,7 @@ using OrderHub.Application.Features.Auth;
 using OrderHub.Domain.Users;
 using OrderHub.Infrastructure.Persistence;
 
-namespace OrderHub.IntegrationTests.Helpers;
+namespace OrderHub.IntegrationTests.Shared;
 
 public static class AuthHelper
 {

@@ -32,6 +32,21 @@ public class ProductConfiguration : IEntityTypeConfiguration<Product>
             .IsRequired()
             .HasMaxLength(ProductConstraints.CategoryMaxLength);
 
-        builder.HasIndex(p => new { p.Name, p.Category, p.Price });
+        // Covering index for default query: WHERE IsActive ORDER BY CreatedAt DESC
+        builder.HasIndex(p => new { p.IsActive, p.CreatedAt })
+            .IsDescending(false, true)
+            .IncludeProperties("Id", "SKU", "Name", "Description", "Price", "Stock", "Category")
+            .HasDatabaseName("IX_Products_IsActive_CreatedAt");
+
+        // Covering index for category filter: WHERE IsActive AND Category = ? ORDER BY CreatedAt DESC
+        builder.HasIndex(p => new { p.IsActive, p.Category, p.CreatedAt })
+            .IsDescending(false, false, true)
+            .IncludeProperties("Id", "SKU", "Name", "Description", "Price", "Stock")
+            .HasDatabaseName("IX_Products_IsActive_Category_CreatedAt");
+
+        // Covering index for price range: WHERE IsActive AND Price BETWEEN ? AND ?
+        builder.HasIndex(p => new { p.IsActive, p.Price })
+            .IncludeProperties("Id", "SKU", "Name", "Description", "Stock", "Category", "CreatedAt")
+            .HasDatabaseName("IX_Products_IsActive_Price");
     }
 }

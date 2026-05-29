@@ -5,7 +5,7 @@ public interface IProductRepository
     Task<Product?> GetByIdAsync(Guid id, CancellationToken ct);
     Task<Product?> GetBySkuAsync(string sku, CancellationToken ct);
     Task<bool> ExistsBySkuAsync(string sku, CancellationToken ct);
-    Task<(List<Product> Items, int TotalCount)> GetFilteredAsync(
+    Task<(List<ProductListItem> Items, int TotalCount)> GetFilteredAsync(
         string? category,
         decimal? minPrice,
         decimal? maxPrice,

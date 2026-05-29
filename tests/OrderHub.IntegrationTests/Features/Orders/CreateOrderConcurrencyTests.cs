@@ -2,7 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using FluentAssertions;
 using OrderHub.Api.Endpoints.Orders.Requests;
-using OrderHub.IntegrationTests.Helpers;
+using OrderHub.IntegrationTests.Shared;
 
 namespace OrderHub.IntegrationTests.Features.Orders;
 

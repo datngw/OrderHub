@@ -6,7 +6,7 @@ using OrderHub.Application.Features.AdminReports;
 using OrderHub.Application.Features.AdminReports.GetTopProducts;
 using OrderHub.Domain.Common;
 using OrderHub.Domain.Orders;
-using OrderHub.UnitTests.Helpers;
+using OrderHub.UnitTests.Shared;
 
 namespace OrderHub.UnitTests.Features.AdminReports.GetTopProducts;
 

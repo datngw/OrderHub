@@ -3,7 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using OrderHub.Domain.Products;
 using OrderHub.Infrastructure.Persistence;
 
-namespace OrderHub.IntegrationTests.Helpers;
+namespace OrderHub.IntegrationTests.Shared;
 
 public static class DatabaseHelper
 {

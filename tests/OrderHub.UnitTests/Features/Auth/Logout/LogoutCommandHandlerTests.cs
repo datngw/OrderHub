@@ -5,7 +5,7 @@ using OrderHub.Application.Common.Persistence;
 using OrderHub.Application.Features.Auth.Logout;
 using OrderHub.Domain.Common;
 using OrderHub.Domain.Users;
-using OrderHub.UnitTests.Helpers;
+using OrderHub.UnitTests.Shared;
 
 namespace OrderHub.UnitTests.Features.Auth.Logout;
 

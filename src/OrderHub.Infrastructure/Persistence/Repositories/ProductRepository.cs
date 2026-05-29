@@ -21,7 +21,7 @@ public class ProductRepository(OrderHubDbContext context) : IProductRepository
         return await context.Products.AnyAsync(p => p.SKU == sku, ct);
     }
 
-    public async Task<(List<Product> Items, int TotalCount)> GetFilteredAsync(
+    public async Task<(List<ProductListItem> Items, int TotalCount)> GetFilteredAsync(
         string? category,
         decimal? minPrice,
         decimal? maxPrice,
@@ -50,6 +50,9 @@ public class ProductRepository(OrderHubDbContext context) : IProductRepository
         var items = await query
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
+            .Select(p => new ProductListItem(
+                p.Id, p.SKU, p.Name, p.Description,
+                p.Price, p.Stock, p.Category, p.IsActive, p.CreatedAt))
             .ToListAsync(ct);
 
         return (items, totalCount);

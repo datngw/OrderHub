@@ -10,7 +10,7 @@ using OrderHub.Application.Features.Orders.CreateOrder;
 using OrderHub.Domain.Common;
 using OrderHub.Domain.Orders;
 using OrderHub.Domain.Products;
-using OrderHub.UnitTests.Helpers;
+using OrderHub.UnitTests.Shared;
 
 namespace OrderHub.UnitTests.Features.Orders.CreateOrder;
 

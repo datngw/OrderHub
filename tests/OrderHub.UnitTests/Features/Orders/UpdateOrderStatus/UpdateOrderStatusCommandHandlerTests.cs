@@ -6,7 +6,7 @@ using OrderHub.Application.Common.Persistence;
 using OrderHub.Application.Features.Orders.UpdateOrderStatus;
 using OrderHub.Domain.Common;
 using OrderHub.Domain.Orders;
-using OrderHub.UnitTests.Helpers;
+using OrderHub.UnitTests.Shared;
 
 namespace OrderHub.UnitTests.Features.Orders.UpdateOrderStatus;
 

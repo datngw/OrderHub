@@ -7,7 +7,7 @@ using OrderHub.Application.Features.Orders.GetOrderById;
 using OrderHub.Domain.Common;
 using OrderHub.Domain.Orders;
 using OrderHub.Domain.Products;
-using OrderHub.UnitTests.Helpers;
+using OrderHub.UnitTests.Shared;
 
 namespace OrderHub.UnitTests.Features.Orders.GetOrderById;
 

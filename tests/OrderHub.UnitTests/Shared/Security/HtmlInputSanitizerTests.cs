@@ -1,7 +1,7 @@
 using FluentAssertions;
 using OrderHub.Application.Common.Security;
 
-namespace OrderHub.UnitTests.Common.Security;
+namespace OrderHub.UnitTests.Shared.Security;
 
 public class HtmlInputSanitizerTests
 {

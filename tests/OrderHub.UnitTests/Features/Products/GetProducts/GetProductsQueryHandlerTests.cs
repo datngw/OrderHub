@@ -3,9 +3,8 @@ using FluentAssertions;
 using Microsoft.Extensions.Caching.Memory;
 using OrderHub.Application.Features.Products;
 using OrderHub.Application.Features.Products.GetProducts;
-using OrderHub.Domain.Common;
 using OrderHub.Domain.Products;
-using OrderHub.UnitTests.Helpers;
+using OrderHub.UnitTests.Shared;
 
 namespace OrderHub.UnitTests.Features.Products.GetProducts;
 
@@ -30,32 +29,30 @@ public class GetProductsQueryHandlerTests
     public async Task Handle_ReturnsPagedResults()
     {
         // Arrange
-        var products = new List<Product>
+        var products = new List<ProductListItem>
         {
-            new()
-            {
-                Id = Guid.NewGuid(),
-                SKU = "SKU-001",
-                Name = "Widget A",
-                Description = "First widget",
-                Price = 10.00m,
-                Stock = 50,
-                Category = "Electronics",
-                IsActive = true,
-                CreatedAt = DateTime.UtcNow
-            },
-            new()
-            {
-                Id = Guid.NewGuid(),
-                SKU = "SKU-002",
-                Name = "Widget B",
-                Description = "Second widget",
-                Price = 20.00m,
-                Stock = 30,
-                Category = "Electronics",
-                IsActive = true,
-                CreatedAt = DateTime.UtcNow
-            }
+            new(
+                Id: Guid.NewGuid(),
+                SKU: "SKU-001",
+                Name: "Widget A",
+                Description: "First widget",
+                Price: 10.00m,
+                Stock: 50,
+                Category: "Electronics",
+                IsActive: true,
+                CreatedAt: DateTime.UtcNow
+            ),
+            new(
+                Id: Guid.NewGuid(),
+                SKU: "SKU-002",
+                Name: "Widget B",
+                Description: "Second widget",
+                Price: 20.00m,
+                Stock: 30,
+                Category: "Electronics",
+                IsActive: true,
+                CreatedAt: DateTime.UtcNow
+            )
         };
 
         const int totalCount = 25;
