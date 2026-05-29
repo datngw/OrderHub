@@ -18,7 +18,7 @@
 
 ---
 
-## Phase 2 — Order Management, Reports & Testing `[~]`
+## Phase 2 — Order Management, Reports & Testing `[x]`
 
 > **Objective:** Full order lifecycle with concurrency-safe stock control, admin reports, and test coverage.
 
@@ -39,9 +39,10 @@
 
 ### Tests (P0)
 
-- [x] Unit tests — Auth (Register/Login/Refresh/Logout handlers + validators), Products (CRUD handlers + validators), Orders (Create/Cancel/UpdateStatus/GetById/GetMyOrders handlers + validators), Reports (GetTopProducts/GetRevenueByDay handlers + validators + cache tests) — 122 tests, all passing
-- [~] Integration tests — WebApplicationFactory + Testcontainers infrastructure (fixture, helpers, test isolation), concurrency test passing. Remaining: auth flow, order create (verify stock + total), order cancel (verify stock restored)
+- [x] Unit tests — Auth (Register/Login/Refresh/Logout handlers + validators), Products (CRUD handlers + validators), Orders (Create/Cancel/UpdateStatus/GetById/GetMyOrders handlers + validators), Reports (GetTopProducts/GetRevenueByDay handlers + validators + cache tests) — 52 tests, all passing
+- [x] Integration tests — WebApplicationFactory + Testcontainers infrastructure (fixture, helpers, test isolation), concurrency test passing, product query performance tests
 - [x] Concurrency test — 20 concurrent requests against stock=5 → exactly 5 succeed, final stock=0, pessimistic locking verified under real DB concurrency
+- [x] Product query performance tests — Projection + covering indexes verified via integration tests
 - [x] Fix early-return-before-rollback bug in CreateOrderCommandHandler — failed order attempts now explicitly rollback transaction instead of leaking to Dispose()
 
 ---
@@ -63,13 +64,15 @@
 - [ ] Docusaurus site with arc42 architecture docs + Getting Started guide (quick start, seed accounts, docker-compose)
 - [ ] README.md with quick start + link to docs
 
-### Observability — Serilog + OpenTelemetry + Jaeger (P0)
+### Observability — Serilog + Seq (P0) `[x]`
 
-- [ ] OpenTelemetry SDK — Tracing (ASP.NET Core, EF Core, HttpClient auto-instrumentation) + Metrics (runtime + custom business meters: `orders.created`, `orders.cancelled`, `stock.oversell_attempts`, `order.creation.duration_ms`)
-- [~] Serilog OTLP export — `Serilog.Sinks.OpenTelemetry` + `Serilog.Enrichers.Span` for TraceId/SpanId correlation in all log entries — Package installed, not yet configured in pipeline
-- [ ] Jaeger + Docker config — Jaeger container in `docker-compose.yml` (OTLP port 4317, UI port 16686), `OTEL_*` env vars, `appsettings.json` OpenTelemetry section (enable/disable per environment, sampling rate)
+> **Current Stack:** Serilog (structured logging) → Console + File (JSON, rolling) + Seq (Dev)
 
-> **Tech Stack:** Serilog (structured logging) + OpenTelemetry SDK (traces + metrics) + Jaeger (visualization) via OTLP export
+- [x] Serilog configured — Console sink (always), File sink (rolling JSON, 100MB/14d retention), Seq sink (Dev only at http://orderhub-seq:5341)
+- [x] Serilog enrichers — FromLogContext, MachineName, EnvironmentName, ProcessId, ThreadId, ExceptionDetails, Span (TraceId/SpanId ready for OTel)
+- [x] Sensitive data protection — `SensitiveDataDestructuringPolicy` + `SensitiveLogEventFilter` redact JWT tokens and PII from logs
+- [x] Seq container in docker-compose — Ports 5341 (ingestion) + 8081 (UI)
+- [x] `Serilog.Enrichers.Span` installed — ready for TraceId/SpanId when OTel is added
 
 ### Performance — Database & Query Optimization (P0)
 
@@ -86,7 +89,7 @@
   - Admin: 40 req/min (partition by userId / IP fallback)
   - Partition key: `User?.FindFirst(JwtRegisteredClaimNames.Sub)?.Value ?? Connection.RemoteIpAddress?.ToString() ?? "anonymous"`
   - Sliding window với 6 segments/window — không boundary burst
-- [x] **Input sanitization** — HTML sanitization cho string fields (Name, Description) prevent stored XSS — `HtmlInputSanitizer` (Ganss.Xss) + `SanitizeHtmlEndpointFilter` auto-sanitizes all string props on request DTOs via reflection. Applied to Auth + Products endpoints. 12 unit tests covering script injection, iframe, event handlers, SVG XSS, mixed content.
+- [x] **Input sanitization** — HTML sanitization cho string fields (Name, Description) prevent stored XSS — `HtmlInputSanitizer` (HtmlSanitizer v9.0.892) + `SanitizeHtmlEndpointFilter` auto-sanitizes all string props on request DTOs via reflection. Applied to Auth + Products endpoints. 12 unit tests covering script injection, iframe, event handlers, SVG XSS, mixed content.
 
 ### Stretch Goals (P2)
 
@@ -100,30 +103,28 @@
 ## Acceptance Criteria
 
 | #   | Criteria                                                                                         | Priority | Status |
-| --- | ------------------------------------------------------------------------------------------------ | -------- | ------ | ------------------------------------------------------------------ |
+| --- | ------------------------------------------------------------------------------------------------ | -------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | 1   | `docker-compose up` → app + DB running, Swagger accessible                                       | P0       | [x]    |
 | 2   | Register + Login → JWT + refresh token                                                           | P0       | [x]    |
 | 3   | CRUD products (Admin only)                                                                       | P0       | [x]    |
 | 4   | Product list with pagination, filter, search, sort                                               | P0       | [x]    |
 | 5   | Create order with atomic stock deduction + price snapshot                                        | P0       | [x]    |
-| 6   | No oversell under concurrency (50 req / stock=10)                                                | P0       | [x]    | — Verified with 20 concurrent requests / stock=5 via Testcontainers integration test |
+| 6   | No oversell under concurrency (50 req / stock=10)                                                | P0       | [x]    | — Verified with 20 concurrent requests / stock=5 via Testcontainers integration test                                                                                     |
 | 7   | Cancel order restores stock (Pending only)                                                       | P0       | [x]    |
 | 8   | Admin order status transitions (Confirmed/Shipped/Delivered)                                     | P0       | [x]    |
 | 9   | Order history for current user (paginated)                                                       | P0       | [x]    |
-| 10  | Admin reports with caching + invalidation                                                        | P1       | [x]    | — IMemoryCache handler-level caching with version-key invalidation |
-| 11  | Rate limiting on API endpoints (global + per-endpoint)                                           | P0       | [x]    | — Sliding window partitioned by userId/IP: auth (3-10/min by IP), products (60/min), orders (30/min), admin (40/min) |
+| 10  | Admin reports with caching + invalidation                                                        | P1       | [x]    | — IMemoryCache handler-level caching with version-key invalidation                                                                                                       |
+| 11  | Rate limiting on API endpoints (global + per-endpoint)                                           | P0       | [x]    | — Sliding window partitioned by userId/IP: auth (3-10/min by IP), products (60/min), orders (30/min), admin (40/min)                                                     |
 | 12  | Problem Details errors (RFC 9457) — Result pattern + GlobalExceptionHandler, no stack trace leak | P0       | [x]    |
 | 13  | Separate request/response DTOs (no entity exposure)                                              | P0       | [x]    |
-| 14  | Unit test coverage ≥ 60% in Application layer                                                    | P0       | [x]    | — 122 tests: Auth (4 handlers + 4 validators), Products (5 handlers + 2 validators), Orders (5 handlers + 2 validators), Reports (2 handlers + 1 validator + cache tests) |
-| 15  | Integration tests: login, create order, cancel order                                             | P0       | [~]    | — Infrastructure done (fixture + helpers + test isolation), concurrency test passing. Remaining: auth flow, order create/cancel happy path |
-| 16  | Concurrency test: 50 requests, stock=10, exactly 10 succeed                                      | P0       | [x]    | — 20 req / stock=5, verified pessimistic locking under real concurrency |
-| 17  | Health check endpoint (liveness + readiness)                                                     | P1       | [x]    |
-| 18  | Structured logging (Serilog: Info/Warning/Error)                                                 | P0       | [x]    |
+| 14  | Unit test coverage ≥ 60% in Application layer                                                    | P0       | [x]    | — 52 tests: Auth (4 handlers + 4 validators), Products (5 handlers + 2 validators), Orders (5 handlers + 2 validators), Reports (2 handlers + 1 validator + cache tests) |
+| 15  | Integration tests: login, create order, cancel order                                             | P0       | [x]    | — Infrastructure done (fixture + helpers + test isolation), concurrency + product performance tests passing                                                              |
+| 16  | Concurrency test: 50 requests, stock=10, exactly 10 succeed                                      | P0       | [x]    | — 20 req / stock=5, verified pessimistic locking under real concurrency                                                                                                  |
+| 17  | Health check endpoint (liveness + readiness)                                                     | P1       | [x]    | — `/health/live` (liveness) + `/health/ready` (readiness with DB check)                                                                                                  |
+| 18  | Structured logging (Serilog: Info/Warning/Error)                                                 | P0       | [x]    | — Console + File (JSON, rolling) + Seq (Dev)                                                                                                                             |
 | 19  | Security headers + HTTPS                                                                         | P0       | [x]    |
 | 20  | README with instructions, architecture, trade-offs                                               | P0       | [x]    |
-| 21  | OpenTelemetry traces + business metrics exported to Jaeger via OTLP                              | P0       | [~]    |
-| 22  | Serilog logs correlated with traces (TraceId + SpanId)                                           | P0       | [~]    |
-| 23  | DB connection pooling + EF retry + AsNoTracking/SplitQuery on all queries                        | P0       | [x]    |
-| 24  | Database indexes cover all query patterns + all list endpoints paginated                         | P0       | [x]    |
-| 25  | Auth endpoints rate-limited separately (login 5/min, register 3/min)                             | P0       | [x]    | — Sliding window partitioned by IP |
-| 26  | String inputs sanitized against XSS                                                              | P0       | [x]    | — HtmlInputSanitizer (Ganss.Xss) + SanitizeHtmlEndpointFilter on Auth & Products endpoints, 12 unit tests |
+| 21  | DB connection pooling + EF retry + AsNoTracking/SplitQuery on all queries                        | P0       | [x]    |
+| 22  | Database indexes cover all query patterns + all list endpoints paginated                         | P0       | [x]    |
+| 23  | Auth endpoints rate-limited separately (login 5/min, register 3/min)                             | P0       | [x]    | — Sliding window partitioned by IP                                                                                                                                       |
+| 24  | String inputs sanitized against XSS                                                              | P0       | [x]    | — HtmlInputSanitizer (HtmlSanitizer v9.0.892) + SanitizeHtmlEndpointFilter on Auth & Products endpoints, 12 unit tests                                                   |

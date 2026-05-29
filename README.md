@@ -1,6 +1,6 @@
 # OrderHub
 
-Central order management API for an e-commerce platform — product catalog, order lifecycle with concurrency-safe stock control, admin reporting, and full observability. Built with .NET 8, Clean Architecture, and PostgreSQL.
+Central order management API for an e-commerce platform — product catalog, order lifecycle with concurrency-safe stock control, admin reporting, and structured logging. Built with .NET 8, Clean Architecture, and PostgreSQL.
 
 ---
 
@@ -10,9 +10,10 @@ Central order management API for an e-commerce platform — product catalog, ord
 - **Product Catalog** — CRUD with soft delete, paginated list with filtering, search, and sorting
 - **Order Management** — Atomic creation with pessimistic locking (`SELECT ... FOR UPDATE`) to prevent overselling, price snapshots, status transitions, cancellation with stock restore
 - **Admin Reports** — Top products by revenue, revenue by day, cached with version-key invalidation
-- **Observability** — Structured logging (Serilog), distributed tracing, custom business metrics, all via OpenTelemetry + Jaeger
+- **Observability** — Structured logging (Serilog → Console + File + Seq), sensitive data redaction, ready for OpenTelemetry + Jaeger
 - **API Documentation** — Interactive Scalar UI with OpenAPI spec
-- **Production-Ready** — Rate limiting, response compression (Brotli + Gzip), security headers, health probes, API versioning
+- **Security** — Per-endpoint rate limiting (sliding window by user/IP), HTML input sanitization (XSS prevention), security headers (HSTS, CSP, X-Frame-Options), password complexity rules
+- **Production-Ready** — Response compression (Brotli + Gzip), health probes (liveness + readiness), API versioning
 
 ---
 
@@ -28,7 +29,7 @@ Api  →  Infrastructure  →  Application  →  Domain
 | ------------------ | ------------------------------------------------------------------------------------------------------- |
 | **Domain**         | Entities, enums, value objects, repository interfaces. Zero external dependencies.                      |
 | **Application**    | MediatR commands/queries, FluentValidation, DTOs, Result pattern (business errors), handler interfaces. |
-| **Infrastructure** | EF Core, repository implementations, JWT auth, OpenTelemetry setup.                                  |
+| **Infrastructure** | EF Core, repository implementations, JWT auth, Serilog configuration.                                   |
 | **Api**            | Minimal API endpoints, middleware, DI registration. Entry point only.                                   |
 
 Key patterns in use:
@@ -41,24 +42,23 @@ Key patterns in use:
 
 ## Tech Stack
 
-| Area              | Technology                                      |
-| ----------------- | ----------------------------------------------- |
-| Runtime           | .NET 8 (LTS)                                    |
-| Database          | PostgreSQL 16                                   |
-| ORM               | EF Core 8 + Npgsql                              |
-| Auth              | JWT + PasswordHasher\<T\>                       |
-| Validation        | FluentValidation                                |
-| Mapping           | Mapster                                         |
-| CQRS              | MediatR                                         |
-| Caching           | IMemoryCache (handler-level, version-key pattern) |
-| Logging           | Serilog → OTLP                                  |
-| Tracing & Metrics | OpenTelemetry SDK                               |
-| Tracing UI        | Jaeger                                          |
-| API Docs          | Scalar + Swashbuckle                            |
-| Versioning        | Asp.Versioning (URL segment)                    |
-| Security          | NetEscapades headers, rate limiting             |
-| Testing           | xUnit + FluentAssertions + Moq + Testcontainers |
-| Containers        | Docker + docker-compose                         |
+| Area              | Technology                                         | Version / Notes                                      |
+| ----------------- | -------------------------------------------------- | ---------------------------------------------------- |
+| Runtime           | .NET (LTS)                                         | 8.0                                                  |
+| Database          | PostgreSQL                                         | 16 (Alpine)                                          |
+| ORM               | EF Core + Npgsql                                   | 8.0.11                                               |
+| Auth              | JWT + PasswordHasher\<T\>                          | 15 min access + 7 day refresh                        |
+| Validation        | FluentValidation                                   | 12.1.1                                               |
+| Mapping           | Mapster                                            | 10.0.7                                               |
+| CQRS              | MediatR                                            | 14.1.0                                               |
+| Caching           | IMemoryCache (handler-level, version-key pattern)  | SizeLimit 10K entries                                |
+| Logging           | Serilog → Console + File (JSON) + Seq (Dev)        | Enrichers: Environment, Process, Thread, Span, Exceptions |
+| HTML Sanitization | HtmlSanitizer                                      | 9.0.892                                              |
+| API Docs          | Scalar + Swashbuckle                               | Scalar 2.14.14, Swashbuckle 10.1.7                  |
+| Versioning        | Asp.Versioning (URL segment)                       | 8.1.0                                                |
+| Security Headers  | NetEscapades.AspNetCore.SecurityHeaders            | 1.3.1                                                |
+| Testing           | xUnit + FluentAssertions + Moq + Testcontainers    | FluentAssertions 8.10.0                              |
+| Containers        | Docker + docker-compose                            | Multi-stage build                                    |
 
 ---
 
@@ -67,12 +67,12 @@ Key patterns in use:
 ### Prerequisites
 
 - [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0)
-- [Docker](https://www.docker.com/get-started) (for PostgreSQL, Jaeger, or running the full stack)
+- [Docker](https://www.docker.com/get-started) (for PostgreSQL, Seq, or running the full stack)
 - Optional: PostgreSQL 16 if running the database locally without Docker
 
 ### Run with Docker Compose
 
-The easiest way to get everything running — API, PostgreSQL, pgAdmin, and Jaeger:
+The easiest way to get everything running — API, PostgreSQL, pgAdmin, and Seq:
 
 ```bash
 # Clone and configure
@@ -90,6 +90,7 @@ docker-compose up --build
 | API       | `http://localhost:5000`           |
 | Scalar UI | `http://localhost:5000/scalar/v1` |
 | pgAdmin   | `http://localhost:5050`           |
+| Seq       | `http://localhost:8081`           |
 
 ### Run Locally
 
@@ -190,22 +191,34 @@ When running locally without Docker, use .NET User Secrets or environment variab
 
 ### Health
 
-| Method | Endpoint        | Description                            |
-| ------ | --------------- | -------------------------------------- |
-| GET    | `/health`       | Liveness probe                         |
-| GET    | `/health/ready` | Readiness probe (checks DB connection) |
+| Method | Endpoint          | Description                            |
+| ------ | ----------------- | -------------------------------------- |
+| GET    | `/health/live`    | Liveness probe                         |
+| GET    | `/health/ready`   | Readiness probe (checks DB connection) |
 
 ---
 
 ## Observability
 
-All telemetry is exported via **OTLP** to Jaeger.
+Structured logging via **Serilog** with multiple sinks and sensitive data redaction.
 
-| Signal  | Source                                       | Examples                                                      |
-| ------- | -------------------------------------------- | ------------------------------------------------------------- |
-| Traces  | ASP.NET Core, EF Core, custom ActivitySource | Request → Handler → DB → Response                             |
-| Metrics | Runtime instrumentation, custom Meter        | `orders.created`, `stock.oversell_attempts`, request duration |
-| Logs    | Serilog → OTLP sink                          | Structured logs with `TraceId` + `SpanId` correlation         |
+| Signal | Source                              | Details                                                            |
+| ------ | ----------------------------------- | ------------------------------------------------------------------ |
+| Logs   | Serilog → Console + File + Seq      | JSON structured logs, rolling files (100MB/14d), Seq UI in Dev     |
+
+### Serilog Enrichers
+
+- **Environment** — Machine name, environment name
+- **Process/Thread** — Process ID, thread ID
+- **Span** — TraceId/SpanId (ready for OpenTelemetry correlation)
+- **Exceptions** — Destructured exception details
+
+### Sensitive Data Protection
+
+- `SensitiveDataDestructuringPolicy` — Redacts JWT tokens and PII from log output
+- `SensitiveLogEventFilter` — Filters sensitive properties before writing to sinks
+
+> **Planned:** OpenTelemetry SDK for distributed tracing + metrics, Jaeger for visualization via OTLP export.
 
 ---
 
@@ -216,7 +229,7 @@ OrderHub/
 ├── src/
 │   ├── OrderHub.Domain/           # Entities, enums, interfaces
 │   ├── OrderHub.Application/      # Commands, queries, handlers, validators, DTOs
-│   ├── OrderHub.Infrastructure/   # EF Core, repositories, auth, caching, OTel
+│   ├── OrderHub.Infrastructure/   # EF Core, repositories, auth, Serilog config
 │   └── OrderHub.Api/              # Endpoints, middleware, Program.cs
 ├── tests/
 │   ├── OrderHub.UnitTests/        # Handler and validator tests
@@ -240,8 +253,8 @@ OrderHub/
 | IMemoryCache over Output Caching   | Handler-level caching stores domain objects, reusable across endpoints; version-key pattern for prefix invalidation; migrate to HybridCache (.NET 9+) when scaling |
 | PasswordHasher\<T\> over BCrypt    | Built-in ASP.NET Core, auto-upgradable hash format, no external dependency                        |
 | Specific Repository + Unit of Work | Focused contracts per entity, explicit transaction boundaries, easier to test                     |
-| Serilog + OpenTelemetry            | Serilog for structured logging maturity; OpenTelemetry SDK for vendor-neutral tracing and metrics |
-| Jaeger over Seq/App Insights       | Open-source, native OTLP, lightweight Docker container                                            |
+| Serilog + Seq                      | Serilog for mature structured logging; Seq for local Dev log visualization and search             |
+| HtmlSanitizer for XSS prevention   | Mature HTML sanitization library, strips all HTML tags from input strings                         |
 
 ---
 
@@ -264,12 +277,13 @@ See [GOALS.md](./GOALS.md) for the full phased implementation roadmap and accept
 
 Planned improvements:
 
+- OpenTelemetry SDK — distributed tracing + custom business metrics
+- Jaeger — trace visualization via OTLP
 - Idempotency keys for order creation
 - Outbox pattern for OrderCreated events
 - GitHub Actions CI/CD pipeline
-- Redis distributed cache — `AddStackExchangeRedisCache` replacing IMemoryCache khi cần multi-instance scaling
+- Redis distributed cache for multi-instance scaling
 - Background jobs for auto-confirming orders
-- Per-user rate limiting
 
 ---
 

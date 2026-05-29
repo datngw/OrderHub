@@ -4,7 +4,7 @@
 
 ## Project Overview
 
-OrderHub is a central order management API for an e-commerce platform. It's a single-service .NET 8 Web API with Clean Architecture, JWT authentication, product catalog, order management with concurrency control, admin reporting, and OpenTelemetry observability (Serilog + Tracing + Metrics + Jaeger).
+OrderHub is a central order management API for an e-commerce platform. It's a single-service .NET 8 Web API with Clean Architecture, JWT authentication, product catalog, order management with concurrency control, admin reporting, and structured logging via Serilog + Seq.
 
 ## Architecture
 
@@ -15,8 +15,8 @@ Api → Infrastructure → Application → Domain
 ```
 
 - **Domain** — Entities, enums, repository interfaces, value objects. Zero external dependencies.
-- **Application** — MediatR commands/queries, FluentValidation validators, DTOs, Result pattern, handler interfaces, ActivitySource/Meter definitions. Depends only on Domain.
-- **Infrastructure** — EF Core DbContext, auth services (JWT/PasswordHasher), repository implementations, observability configuration. Implements Application interfaces.
+- **Application** — MediatR commands/queries, FluentValidation validators, DTOs, Result pattern, handler interfaces. Depends only on Domain.
+- **Infrastructure** — EF Core DbContext, auth services (JWT/PasswordHasher), repository implementations, Serilog configuration. Implements Application interfaces.
 - **Api** — Minimal API endpoints, middleware, Program.cs, DI registration. Entry point only.
 
 ### Key Patterns
@@ -25,31 +25,30 @@ Api → Infrastructure → Application → Domain
 - **Specific Repository + Unit of Work** — Each entity has its own repository interface (IProductRepository, IUserRepository, etc.) defined in Domain and implemented in Infrastructure. IUnitOfWork wraps SaveChanges and transactions.
 - **Separate DTOs** — Request DTOs and response DTOs are always separate from domain entities. Never expose entities to clients.
 - **Pessimistic locking** — `SELECT ... FOR UPDATE` on product rows during order creation to prevent overselling.
-- **Observability** — Serilog for structured logging, OpenTelemetry SDK for distributed tracing + metrics, Jaeger for visualization. All signals exported via OTLP.
+- **Observability** — Serilog for structured logging (Console + File + Seq). `Serilog.Enrichers.Span` installed and ready for OpenTelemetry TraceId/SpanId correlation. OpenTelemetry SDK + Jaeger planned but not yet configured.
 - **IMemoryCache with version-key pattern** — Data-level caching in query handlers. Version keys enable prefix-based invalidation: on mutation, version is reset → old cache entries orphaned → expire by TTL. `CacheKeys` static class centralizes all keys and invalidation logic.
 - **Result pattern** — Handlers return `Result<T>` instead of throwing. Domain error collections (`ProductErrors`, `AuthErrors`) define typed `Error` → mapped to HTTP status via `ResultExtensions`.
+- **HTML Sanitization** — `HtmlInputSanitizer` (HtmlSanitizer v9.0.892) strips all HTML from string inputs. `SanitizeHtmlEndpointFilter` auto-sanitizes all string properties on request DTOs via reflection.
 
 ## Tech Stack
 
 | Component | Choice | Notes |
 |-----------|--------|-------|
 | Runtime | .NET 8 (LTS) | Target framework |
-| Database | PostgreSQL | Via EF Core + Npgsql |
+| Database | PostgreSQL 16 | Via EF Core 8 + Npgsql |
 | Auth | JWT (15min) + Refresh Token (7 days) | PasswordHasher<T> (ASP.NET Core built-in) |
-| Validation | FluentValidation | Registered via DI |
-| Mapping | Mapster | Between entities and DTOs |
-| CQRS | MediatR | Pipeline behavior for validation |
+| Validation | FluentValidation 12.1.1 | Registered via DI |
+| Mapping | Mapster 10.0.7 | Between entities and DTOs |
+| CQRS | MediatR 14.1.0 | Pipeline behavior for validation |
 | Caching | IMemoryCache | Handler-level data caching, version-key invalidation, SizeLimit 10K entries |
-| API Docs | Scalar + Swashbuckle | Scalar UI with OpenAPI spec |
-| Logging | Serilog | Structured logging, enrichers, OTLP export |
-| Tracing | OpenTelemetry SDK | ASP.NET Core + EF Core + HttpClient auto-instrumentation |
-| Metrics | OpenTelemetry SDK | Runtime + custom business meters |
-| Tracing Backend | Jaeger | OTLP receiver, Docker container |
-| Security Headers | NetEscapades | HSTS, CSP, X-Frame-Options, etc. |
-| Versioning | Asp.Versioning | URL segment (/api/v1/...) |
+| API Docs | Scalar 2.14.14 + Swashbuckle 10.1.7 | Scalar UI with OpenAPI spec |
+| Logging | Serilog → Console + File (JSON) + Seq (Dev) | Enrichers: Environment, Process, Thread, Span, Exceptions |
+| Security Headers | NetEscapades 1.3.1 | HSTS, CSP, X-Frame-Options, etc. |
+| HTML Sanitization | HtmlSanitizer 9.0.892 | Strips all HTML from input strings |
+| Versioning | Asp.Versioning 8.1.0 | URL segment (/api/v1/...) |
 | Compression | Brotli + Gzip | Response compression |
-| Rate Limiting | ASP.NET Core built-in | Fixed window, 100 req/min |
-| Testing | xUnit + FluentAssertions + Moq | Integration tests use Testcontainers |
+| Rate Limiting | ASP.NET Core built-in | Sliding window, per-endpoint, partitioned by userId/IP |
+| Testing | xUnit + FluentAssertions 8.10 + Moq | Integration tests use Testcontainers (PostgreSQL) |
 | Containers | Docker + docker-compose | Multi-stage build |
 
 ## Solution Structure
@@ -58,8 +57,8 @@ Api → Infrastructure → Application → Domain
 OrderHub/
 ├── src/
 │   ├── OrderHub.Domain/           # Entities, Enums, Interfaces
-│   ├── OrderHub.Application/      # Commands, Queries, Handlers, Validators, DTOs, Observability
-│   ├── OrderHub.Infrastructure/   # EF Core, Auth Services, Cache, OTel Config
+│   ├── OrderHub.Application/      # Commands, Queries, Handlers, Validators, DTOs
+│   ├── OrderHub.Infrastructure/   # EF Core, Auth Services, Cache, Serilog Config
 │   └── OrderHub.Api/              # Minimal API Endpoints, Middleware, Program.cs
 ├── tests/
 │   ├── OrderHub.UnitTests/        # Application layer (handlers, validators)
@@ -91,8 +90,6 @@ OrderHub/
 - Request DTOs: `{Verb}{Entity}Request` (e.g., `CreateProductRequest`) — in API layer
 - Response DTOs: `{Entity}Response` (e.g., `ProductResponse`) — in Application layer
 - Validators: `{Command}Validator` (e.g., `CreateProductCommandValidator`) — validate Commands/Queries
-- ActivitySource: `OrderHub.{Feature}` (e.g., `OrderHub.Orders`)
-- Meter: `OrderHub.{Feature}` (e.g., `OrderHub.Orders`)
 
 ### Code Style
 
@@ -106,10 +103,10 @@ OrderHub/
 
 ### Observability
 
-- **Logging** — Serilog with `Serilog.Enrichers.Span` (TraceId/SpanId correlation), `Serilog.Sinks.OpenTelemetry` (OTLP export)
-- **Tracing** — Custom `ActivitySource` per feature for business-level spans; auto-instrumentation for ASP.NET Core, EF Core, HttpClient
-- **Metrics** — Custom `Meter` per feature for business counters/histograms (orders.created, stock.oversell_attempts, etc.)
-- **Export** — All signals via OTLP to Jaeger (docker-compose)
+- **Logging** — Serilog with Console + File (rolling JSON, 100MB/14d) + Seq (Dev only)
+- **Enrichers** — FromLogContext, MachineName, EnvironmentName, ProcessId, ThreadId, ExceptionDetails, Span (TraceId/SpanId ready for OTel)
+- **Sensitive data** — `SensitiveDataDestructuringPolicy` + `SensitiveLogEventFilter` redact JWT tokens and PII
+- **Planned** — OpenTelemetry SDK for tracing + metrics, Jaeger for visualization via OTLP
 - No password/token/PII in logs
 
 ### Testing
@@ -140,7 +137,7 @@ dotnet test tests/OrderHub.IntegrationTests
 dotnet ef migrations add <Name> --project src/OrderHub.Infrastructure --startup-project src/OrderHub.Api
 dotnet ef database update --project src/OrderHub.Infrastructure --startup-project src/OrderHub.Api
 
-# Docker (App + PostgreSQL + Jaeger)
+# Docker (App + PostgreSQL + pgAdmin + Seq)
 docker-compose up --build
 ```
 
@@ -154,8 +151,8 @@ docker-compose up --build
 6. **PasswordHasher<T> over BCrypt** — Built-in ASP.NET Core, PBKDF2 with HMAC-SHA256, auto-upgradable hash format, no external dependency.
 7. **Category as string** — No separate Category table for MVP. Easy to normalize later.
 8. **Price snapshot in OrderItem** — UnitPrice captured at order creation time. Decouples historical data from current prices.
-9. **Serilog + OpenTelemetry over pure OTel logging** — Serilog provides rich structured logging with mature ecosystem; OpenTelemetry SDK adds vendor-neutral tracing and metrics. `Serilog.Sinks.OpenTelemetry` bridges both worlds via OTLP.
-10. **Jaeger over Seq/Application Insights** — Open-source, native OTLP support, purpose-built for distributed tracing. Lightweight Docker container, no licensing cost.
+9. **Serilog + Seq for observability** — Serilog provides mature structured logging; Seq provides local Dev log visualization and search. `Serilog.Enrichers.Span` installed for future OTel correlation. OpenTelemetry + Jaeger planned as next observability step.
+10. **HtmlSanitizer for XSS prevention** — `HtmlSanitizer` v9.0.892 strips all HTML from string inputs. `SanitizeHtmlEndpointFilter` auto-applies to endpoint request DTOs via reflection.
 11. **Result pattern over exceptions** — Business errors use `Result<T>`, exceptions only for validation pipeline and unexpected failures. Both paths → ProblemDetails (RFC 9457).
 
 ## Domain Entities
@@ -176,8 +173,8 @@ docker-compose up --build
 - `PUT /api/v1/orders/{id}/status` (Admin: status transitions)
 - `POST /api/v1/orders/{id}/cancel` (Pending only, restores stock)
 - `GET /api/v1/admin/reports/top-products|revenue-by-day` (cached)
-- `GET /health` (liveness) + `GET /health/ready` (readiness)
+- `GET /health/live` (liveness) + `GET /health/ready` (readiness)
 
 ## Implementation Status
 
-See `GOALS.md` for the full phased roadmap. Phase 1 (Foundation) is complete. Phase 2 (Orders + Tests) and Phase 3 (Production Readiness + Observability) are in progress.
+See `GOALS.md` for the full phased roadmap. Phase 1 (Foundation) and Phase 2 (Orders + Tests) are complete. Phase 3 (Production Readiness) is in progress — Serilog + Seq observability done, OpenTelemetry + Jaeger planned (P1).
