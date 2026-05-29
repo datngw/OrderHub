@@ -2,9 +2,9 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using NetEscapades.AspNetCore.SecurityHeaders;
-using OrderHub.Api.Common;
-using OrderHub.Api.Logging;
+using OrderHub.Api.Extensions;
 using OrderHub.Api.Middlewares;
+using OrderHub.Infrastructure.Logging;
 using Scalar.AspNetCore;
 using Serilog;
 using Serilog.Events;
@@ -106,8 +106,7 @@ public static class AppMiddlewareConfiguration
         builder.Host.UseSerilog((context, loggerConfig) =>
         {
             loggerConfig.ReadFrom.Configuration(context.Configuration);
-            loggerConfig.Destructure.With<SensitiveDataDestructuringPolicy>();
-            loggerConfig.Filter.With<SensitiveLogEventFilter>();
+            loggerConfig.ConfigureInfrastructureDefaults();
         });
 
         return builder;

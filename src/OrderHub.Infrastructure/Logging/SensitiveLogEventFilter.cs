@@ -1,7 +1,7 @@
 using Serilog.Core;
 using Serilog.Events;
 
-namespace OrderHub.Api.Logging;
+namespace OrderHub.Infrastructure.Logging;
 
 public sealed class SensitiveLogEventFilter : ILogEventFilter
 {

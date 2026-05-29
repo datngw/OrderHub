@@ -1,7 +1,7 @@
 using System.Reflection;
 using OrderHub.Application.Common.Security;
 
-namespace OrderHub.Api.Common;
+namespace OrderHub.Api.Filters;
 
 public sealed class SanitizeHtmlEndpointFilter : IEndpointFilter
 {

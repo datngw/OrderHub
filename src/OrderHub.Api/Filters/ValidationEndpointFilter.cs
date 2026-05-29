@@ -1,6 +1,7 @@
 using FluentValidation;
+using OrderHub.Api.Middlewares;
 
-namespace OrderHub.Api.Common;
+namespace OrderHub.Api.Filters;
 
 public sealed class ValidationEndpointFilter<TRequest>(IValidator<TRequest> validator) : IEndpointFilter
 {

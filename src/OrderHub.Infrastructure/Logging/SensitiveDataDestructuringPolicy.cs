@@ -2,7 +2,7 @@ using Serilog.Core;
 using Serilog.Events;
 using System.Diagnostics.CodeAnalysis;
 
-namespace OrderHub.Api.Logging;
+namespace OrderHub.Infrastructure.Logging;
 
 public sealed class SensitiveDataDestructuringPolicy : IDestructuringPolicy
 {

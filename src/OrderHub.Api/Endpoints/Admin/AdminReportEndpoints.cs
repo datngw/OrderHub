@@ -1,7 +1,9 @@
 using Asp.Versioning;
 using MediatR;
 using Microsoft.AspNetCore.Http.HttpResults;
-using OrderHub.Api.Common;
+using OrderHub.Api.Endpoints;
+using OrderHub.Api.Extensions;
+using OrderHub.Api.Middlewares;
 using OrderHub.Application.Common.Security;
 using OrderHub.Application.Features.AdminReports;
 using OrderHub.Application.Features.AdminReports.GetRevenueByDay;

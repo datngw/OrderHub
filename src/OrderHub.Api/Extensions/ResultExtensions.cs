@@ -1,7 +1,8 @@
 using Microsoft.AspNetCore.Http.HttpResults;
+using OrderHub.Api.Middlewares;
 using OrderHub.Domain.Common;
 
-namespace OrderHub.Api.Common;
+namespace OrderHub.Api.Extensions;
 
 public static class ResultExtensions
 {

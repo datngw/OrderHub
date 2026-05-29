@@ -1,5 +1,4 @@
 using Microsoft.AspNetCore.Diagnostics;
-using OrderHub.Api.Common;
 using OrderHub.Application.Common.Exceptions;
 using OrderHub.Domain.Common;
 

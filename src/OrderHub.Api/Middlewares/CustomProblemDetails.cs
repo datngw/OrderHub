@@ -1,4 +1,4 @@
-namespace OrderHub.Api.Common;
+namespace OrderHub.Api.Middlewares;
 
 public sealed class CustomProblemDetails
 {

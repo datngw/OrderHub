@@ -1,7 +1,8 @@
 using System.Reflection;
-using OrderHub.Api.Common;
+using OrderHub.Api.Endpoints;
+using OrderHub.Api.Filters;
 
-namespace OrderHub.Api.Common;
+namespace OrderHub.Api.Extensions;
 
 public static class EndpointExtensions
 {

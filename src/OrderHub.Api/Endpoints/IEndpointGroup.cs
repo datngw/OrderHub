@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Routing;
 
-namespace OrderHub.Api.Common;
+namespace OrderHub.Api.Endpoints;
 
 public interface IEndpointGroup
 {
