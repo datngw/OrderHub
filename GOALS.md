@@ -53,11 +53,7 @@
 
 ### API Documentation (P0)
 
-- [ ] OpenAPI spec with example request/response for every endpoint + `OrderHub.http` file covering all endpoints
-
-### Code Quality Audit (P0)
-
-- [ ] Business logic in handlers only, DI scopes correct, all I/O async, no hardcoded secrets, no PII in logs
+- [ ] `OrderHub.http` file covering all endpoints
 
 ### Documentation (P0)
 

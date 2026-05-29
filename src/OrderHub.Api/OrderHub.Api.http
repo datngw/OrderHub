@@ -1,6 +1,367 @@
-@OrderHub.Api_HostAddress = http://localhost:5065
+### ============================================================
+### OrderHub API — Complete HTTP Test File
+### ============================================================
+### Usage:
+###   1. Run the API: dotnet run --project src/OrderHub.Api
+###   2. Execute requests in order — Auth first to obtain tokens
+###   3. After login, paste the accessToken into @accessToken below
+###   4. For admin endpoints, paste admin's accessToken into @adminAccessToken
+### ============================================================
 
-GET {{OrderHub.Api_HostAddress}}/weatherforecast/
+@baseUrl = http://localhost:5000/api/v1
+@accessToken =
+@refreshToken =
+@adminAccessToken =
+
+### ============================================================
+### Health Checks
+### ============================================================
+
+### Liveness probe
+GET http://localhost:5000/health/live
+Accept: application/json
+
+###
+
+### Readiness probe (checks PostgreSQL connection)
+GET http://localhost:5000/health/ready
+Accept: application/json
+
+###
+
+### ============================================================
+### Auth — Register (anonymous)
+### ============================================================
+
+### Register a new customer
+POST {{baseUrl}}/auth/register
+Content-Type: application/json
+
+{
+  "email": "john.doe@example.com",
+  "password": "Password123!",
+  "fullName": "John Doe"
+}
+
+###
+
+### Register an admin user
+POST {{baseUrl}}/auth/register
+Content-Type: application/json
+
+{
+  "email": "admin@orderhub.com",
+  "password": "Admin123!",
+  "fullName": "Admin User"
+}
+
+###
+
+### ============================================================
+### Auth — Login (anonymous)
+### ============================================================
+
+### Login as customer — paste accessToken from response into @accessToken
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "john.doe@example.com",
+  "password": "Password123!"
+}
+
+###
+
+### Login as admin — paste accessToken from response into @adminAccessToken
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@orderhub.com",
+  "password": "Admin123!"
+}
+
+###
+
+### ============================================================
+### Auth — Refresh Token (anonymous)
+### ============================================================
+
+### Refresh the access token — paste refreshToken from login response
+POST {{baseUrl}}/auth/refresh
+Content-Type: application/json
+
+{
+  "refreshToken": ""
+}
+
+###
+
+### ============================================================
+### Auth — Logout (authenticated)
+### ============================================================
+
+### Revoke refresh token
+POST {{baseUrl}}/auth/logout
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "refreshToken": ""
+}
+
+###
+
+### ============================================================
+### Products — List (public, no auth required)
+### ============================================================
+
+### Get products — default pagination
+GET {{baseUrl}}/products?page=1&pageSize=10
+Accept: application/json
+
+###
+
+### Get products — filter by category
+GET {{baseUrl}}/products?category=Electronics&page=1&pageSize=20
+Accept: application/json
+
+###
+
+### Get products — filter by price range
+GET {{baseUrl}}/products?minPrice=50&maxPrice=500&page=1&pageSize=10
+Accept: application/json
+
+###
+
+### Get products — search by name
+GET {{baseUrl}}/products?search=headphones&page=1&pageSize=10
+Accept: application/json
+
+###
+
+### Get products — sorted by price ascending
+GET {{baseUrl}}/products?sortBy=price&sortOrder=asc&page=1&pageSize=10
+Accept: application/json
+
+###
+
+### ============================================================
+### Products — Get by ID (public, no auth required)
+### ============================================================
+
+### Get a single product — replace GUID with a real product ID
+GET {{baseUrl}}/products/f47ac10b-58cc-4372-a567-0e02b2c3d479
+Accept: application/json
+
+###
+
+### ============================================================
+### Products — Create (admin only)
+### ============================================================
+
+### Create a new product — copy id from response
+POST {{baseUrl}}/products
+Authorization: Bearer {{adminAccessToken}}
+Content-Type: application/json
+
+{
+  "sku": "PRD-001",
+  "name": "Wireless Bluetooth Headphones",
+  "description": "Premium noise-cancelling wireless headphones with 30-hour battery life.",
+  "price": 149.99,
+  "stock": 250,
+  "category": "Electronics"
+}
+
+###
+
+### Create a second product for order testing — copy id from response
+POST {{baseUrl}}/products
+Authorization: Bearer {{adminAccessToken}}
+Content-Type: application/json
+
+{
+  "sku": "PRD-002",
+  "name": "Mechanical Keyboard",
+  "description": "RGB mechanical keyboard with Cherry MX switches.",
+  "price": 89.99,
+  "stock": 100,
+  "category": "Electronics"
+}
+
+###
+
+### ============================================================
+### Products — Update (admin only)
+### ============================================================
+
+### Update product details — replace GUID with a real product ID
+PUT {{baseUrl}}/products/f47ac10b-58cc-4372-a567-0e02b2c3d479
+Authorization: Bearer {{adminAccessToken}}
+Content-Type: application/json
+
+{
+  "name": "Wireless Bluetooth Headphones Pro",
+  "description": "Updated premium noise-cancelling wireless headphones with 40-hour battery life.",
+  "price": 179.99,
+  "stock": 200,
+  "category": "Electronics"
+}
+
+###
+
+### ============================================================
+### Products — Delete (admin only, soft delete)
+### ============================================================
+
+### Soft delete a product — replace GUID with a real product ID
+DELETE {{baseUrl}}/products/f47ac10b-58cc-4372-a567-0e02b2c3d479
+Authorization: Bearer {{adminAccessToken}}
+
+###
+
+### ============================================================
+### Orders — Create (authenticated)
+### ============================================================
+
+### Place a new order — replace productId with a real GUID, copy orderId from response
+POST {{baseUrl}}/orders
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "items": [
+    {
+      "productId": "f47ac10b-58cc-4372-a567-0e02b2c3d479",
+      "quantity": 2
+    }
+  ]
+}
+
+###
+
+### Place an order with multiple items
+POST {{baseUrl}}/orders
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "items": [
+    {
+      "productId": "f47ac10b-58cc-4372-a567-0e02b2c3d479",
+      "quantity": 1
+    },
+    {
+      "productId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      "quantity": 3
+    }
+  ]
+}
+
+###
+
+### ============================================================
+### Orders — My Orders (authenticated)
+### ============================================================
+
+### Get current user's orders (paginated)
+GET {{baseUrl}}/orders/me?page=1&pageSize=10
+Authorization: Bearer {{accessToken}}
+Accept: application/json
+
+###
+
+### ============================================================
+### Orders — Get by ID (authenticated, owner or admin)
+### ============================================================
+
+### Get order details — replace GUID with a real order ID
+GET {{baseUrl}}/orders/7c9e6679-7425-40de-944b-e07fc1f90ae7
+Authorization: Bearer {{accessToken}}
+Accept: application/json
+
+###
+
+### ============================================================
+### Orders — Update Status (admin only)
+### ============================================================
+
+### Confirm a pending order (Confirmed = 1) — replace GUID with real order ID
+PUT {{baseUrl}}/orders/7c9e6679-7425-40de-944b-e07fc1f90ae7/status
+Authorization: Bearer {{adminAccessToken}}
+Content-Type: application/json
+
+{
+  "status": 1
+}
+
+###
+
+### Ship a confirmed order (Shipped = 2)
+PUT {{baseUrl}}/orders/7c9e6679-7425-40de-944b-e07fc1f90ae7/status
+Authorization: Bearer {{adminAccessToken}}
+Content-Type: application/json
+
+{
+  "status": 2
+}
+
+###
+
+### Mark order as delivered (Delivered = 3)
+PUT {{baseUrl}}/orders/7c9e6679-7425-40de-944b-e07fc1f90ae7/status
+Authorization: Bearer {{adminAccessToken}}
+Content-Type: application/json
+
+{
+  "status": 3
+}
+
+###
+
+### ============================================================
+### Orders — Cancel (authenticated, owner or admin)
+### ============================================================
+
+### Cancel a pending order (restores stock) — replace GUID with real order ID
+POST {{baseUrl}}/orders/7c9e6679-7425-40de-944b-e07fc1f90ae7/cancel
+Authorization: Bearer {{accessToken}}
+
+###
+
+### ============================================================
+### Admin Reports — Top Products by Revenue (admin only)
+### ============================================================
+
+### Get top 10 products by revenue (default)
+GET {{baseUrl}}/admin/reports/top-products
+Authorization: Bearer {{adminAccessToken}}
+Accept: application/json
+
+###
+
+### Get top 5 products with date filter
+GET {{baseUrl}}/admin/reports/top-products?from=2025-01-01T00:00:00Z&to=2025-12-31T23:59:59Z&top=5
+Authorization: Bearer {{adminAccessToken}}
+Accept: application/json
+
+###
+
+### ============================================================
+### Admin Reports — Revenue by Day (admin only)
+### ============================================================
+
+### Get revenue aggregated by day (all time)
+GET {{baseUrl}}/admin/reports/revenue-by-day
+Authorization: Bearer {{adminAccessToken}}
+Accept: application/json
+
+###
+
+### Get revenue by day with date filter
+GET {{baseUrl}}/admin/reports/revenue-by-day?from=2025-03-01T00:00:00Z&to=2025-03-31T23:59:59Z
+Authorization: Bearer {{adminAccessToken}}
 Accept: application/json
 
 ###
