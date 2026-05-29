@@ -1,0 +1,90 @@
+/**
+ * OrderHub Documentation — Custom Styles
+ * Palette: neutral — white/black, no accent color
+ */
+
+/* ── Color Palette (Neutral) ── */
+:root {
+  --ifm-color-primary: #171717;
+  --ifm-color-primary-dark: #0a0a0a;
+  --ifm-color-primary-darker: #000000;
+  --ifm-color-primary-darkest: #000000;
+  --ifm-color-primary-light: #262626;
+  --ifm-color-primary-lighter: #404040;
+  --ifm-color-primary-lightest: #525252;
+  --ifm-code-font-size: 95%;
+  --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.05);
+}
+
+[data-theme='dark'] {
+  --ifm-color-primary: #fafafa;
+  --ifm-color-primary-dark: #e5e5e5;
+  --ifm-color-primary-darker: #d4d4d4;
+  --ifm-color-primary-darkest: #a3a3a3;
+  --ifm-color-primary-light: #ffffff;
+  --ifm-color-primary-lighter: #ffffff;
+  --ifm-color-primary-lightest: #ffffff;
+  --docusaurus-highlighted-code-line-bg: rgba(255, 255, 255, 0.06);
+}
+
+/* ── Responsive Tables ── */
+table {
+  display: block;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ── Code Block Spacing ── */
+pre code {
+  font-size: 0.9em;
+}
+
+/* ── Badge Styles ── */
+.badge {
+  display: inline-block;
+  padding: 0.25em 0.75em;
+  border-radius: 9999px;
+  font-size: 0.8em;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+}
+
+.badge--green {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.badge--blue {
+  background: #e0e7ff;
+  color: #3730a3;
+}
+
+.badge--orange {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.badge--red {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+[data-theme='dark'] .badge--green {
+  background: #14532d;
+  color: #bbf7d0;
+}
+
+[data-theme='dark'] .badge--blue {
+  background: #1e1b4b;
+  color: #c7d2fe;
+}
+
+[data-theme='dark'] .badge--orange {
+  background: #78350f;
+  color: #fde68a;
+}
+
+[data-theme='dark'] .badge--red {
+  background: #7f1d1d;
+  color: #fecaca;
+}

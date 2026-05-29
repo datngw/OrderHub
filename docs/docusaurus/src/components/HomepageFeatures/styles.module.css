@@ -1,0 +1,91 @@
+/* ── Section ── */
+.features {
+  padding: 5rem 0;
+  width: 100%;
+  background: var(--oh-section-bg);
+}
+
+.sectionHeader {
+  text-align: center;
+  margin-bottom: 3.5rem;
+}
+
+.sectionTitle {
+  font-size: 2rem;
+  margin-bottom: 0.75rem;
+}
+
+.sectionSubtitle {
+  font-size: 1.15rem;
+  color: var(--oh-text-muted);
+  max-width: 560px;
+  margin: 0 auto;
+  line-height: 1.6;
+}
+
+/* ── Grid ── */
+.featureGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.25rem;
+}
+
+@media screen and (max-width: 996px) {
+  .featureGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media screen and (max-width: 576px) {
+  .featureGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ── Card ── */
+.featureItem {
+  background: var(--oh-card-bg);
+  border: 1px solid var(--oh-card-border);
+  border-radius: 16px;
+  padding: 1.75rem;
+  display: flex;
+  gap: 1.25rem;
+  align-items: flex-start;
+  box-shadow: var(--oh-card-shadow);
+  transition: border-color 0.25s ease, box-shadow 0.25s ease;
+}
+
+.featureItem:hover {
+  border-color: var(--oh-card-hover-border);
+  box-shadow: var(--oh-card-hover-shadow);
+}
+
+/* ── Icon ── */
+.featureIconWrap {
+  flex-shrink: 0;
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background: var(--oh-icon-bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.featureIcon {
+  font-size: 1.4rem;
+  line-height: 1;
+}
+
+/* ── Body ── */
+.featureBody h3 {
+  font-size: 1.05rem;
+  margin-bottom: 0.4rem;
+}
+
+.featureBody p {
+  font-size: 0.88rem;
+  color: var(--oh-text-muted);
+  line-height: 1.6;
+  margin-bottom: 0;
+}
