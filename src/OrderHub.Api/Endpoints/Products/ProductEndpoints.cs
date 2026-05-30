@@ -1,14 +1,12 @@
 using Asp.Versioning;
 using Asp.Versioning.Builder;
 using MediatR;
-using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using OrderHub.Api.Endpoints;
 using OrderHub.Api.Extensions;
 using OrderHub.Application.Common.Security;
 using OrderHub.Api.Endpoints.Products.Requests;
 using OrderHub.Application.Common.Pagination;
-using OrderHub.Domain.Common;
 using OrderHub.Application.Features.Products;
 using OrderHub.Application.Features.Products.CreateProduct;
 using OrderHub.Application.Features.Products.DeleteProduct;
@@ -68,40 +66,40 @@ public sealed class ProductEndpoints : IEndpointGroup
             .RequireAuthorization(AuthorizationPolicies.Policies.AdminOnly);
     }
 
-    private static async Task<Results<Ok<PagedResult<ProductResponse>>, ProblemHttpResult>> HandleGetProducts(
+    private static async Task<IResult> HandleGetProducts(
         [AsParameters] GetProductsQuery query, IMediator mediator, CancellationToken ct)
     {
         var result = await mediator.Send(query, ct);
-        return result.ToResponse();
+        return Results.Ok(result.Value);
     }
 
-    private static async Task<Results<Ok<ProductResponse>, ProblemHttpResult>> HandleGetProduct(
+    private static async Task<IResult> HandleGetProduct(
         Guid id, IMediator mediator, CancellationToken ct)
     {
         var result = await mediator.Send(new GetProductByIdQuery(id), ct);
-        return result.ToResponse();
+        return Results.Ok(result.Value);
     }
 
-    private static async Task<Results<Created<ProductResponse>, ProblemHttpResult>> HandleCreateProduct(
+    private static async Task<IResult> HandleCreateProduct(
         [FromBody] CreateProductRequest request, IMediator mediator, CancellationToken ct)
     {
         var command = new CreateProductCommand(request.SKU, request.Name, request.Description, request.Price, request.Stock, request.Category);
         var result = await mediator.Send(command, ct);
-        return result.ToCreatedResponse($"/api/v1/products/{result.Value?.Id}");
+        return Results.Created($"/api/v1/products/{result.Value.Id}", result.Value);
     }
 
-    private static async Task<Results<Ok<ProductResponse>, ProblemHttpResult>> HandleUpdateProduct(
+    private static async Task<IResult> HandleUpdateProduct(
         Guid id, [FromBody] UpdateProductRequest request, IMediator mediator, CancellationToken ct)
     {
         var command = new UpdateProductCommand(id, request.Name, request.Description, request.Price, request.Stock, request.Category);
         var result = await mediator.Send(command, ct);
-        return result.ToResponse();
+        return Results.Ok(result.Value);
     }
 
-    private static async Task<Results<NoContent, ProblemHttpResult>> HandleDeleteProduct(
+    private static async Task<IResult> HandleDeleteProduct(
         Guid id, IMediator mediator, CancellationToken ct)
     {
-        var result = await mediator.Send(new DeleteProductCommand(id), ct);
-        return result.ToNoContentResponse();
+        await mediator.Send(new DeleteProductCommand(id), ct);
+        return Results.NoContent();
     }
 }

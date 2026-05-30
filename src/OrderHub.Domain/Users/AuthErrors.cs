@@ -4,18 +4,18 @@ namespace OrderHub.Domain.Users;
 
 public static class AuthErrors
 {
-    public static readonly Error InvalidCredentials =
-        new("Auth.InvalidCredentials", "Invalid credentials.", ErrorType.Unauthorized);
+    public static Error InvalidCredentials =>
+        Error.Problem("Auth.InvalidCredentials", "Invalid credentials.");
 
-    public static readonly Error EmailAlreadyExists =
-        new("Auth.EmailAlreadyExists", "A user with this email already exists.", ErrorType.Conflict);
+    public static Error EmailAlreadyExists =>
+        Error.Conflict("Auth.EmailAlreadyExists", "A user with this email already exists.");
 
-    public static readonly Error InvalidRefreshToken =
-        new("Auth.InvalidRefreshToken", "Invalid refresh token.", ErrorType.Unauthorized);
+    public static Error InvalidRefreshToken =>
+        Error.Problem("Auth.InvalidRefreshToken", "Invalid refresh token.");
 
-    public static readonly Error RefreshTokenRevoked =
-        new("Auth.RefreshTokenRevoked", "Refresh token has been revoked.", ErrorType.Unauthorized);
+    public static Error RefreshTokenRevoked =>
+        Error.Problem("Auth.RefreshTokenRevoked", "Refresh token has been revoked.");
 
-    public static readonly Error RefreshTokenExpired =
-        new("Auth.RefreshTokenExpired", "Refresh token has expired.", ErrorType.Unauthorized);
+    public static Error RefreshTokenExpired =>
+        Error.Problem("Auth.RefreshTokenExpired", "Refresh token has expired.");
 }

@@ -33,12 +33,6 @@ public sealed class LoggingPipelineBehavior<TRequest, TResponse>(
                 logger.LogWarning(ex, "Validation failed for {RequestName} after {ElapsedMs}ms", requestName, stopwatch.ElapsedMilliseconds);
                 throw;
             }
-            catch (DomainException ex)
-            {
-                stopwatch.Stop();
-                logger.LogWarning(ex, "Domain error in {RequestName} after {ElapsedMs}ms: {Message}", requestName, stopwatch.ElapsedMilliseconds, ex.Message);
-                throw;
-            }
             catch (Exception ex)
             {
                 stopwatch.Stop();

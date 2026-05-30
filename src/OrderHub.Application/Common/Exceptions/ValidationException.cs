@@ -1,12 +1,9 @@
+using OrderHub.Domain.Common;
+
 namespace OrderHub.Application.Common.Exceptions;
 
-public sealed class ValidationException : Exception
+public sealed class ValidationException(IEnumerable<ValidationError> errors)
+    : AppException(new Error("General.Validation", "One or more validation errors occurred", ErrorType.Validation))
 {
-    public ValidationException(IEnumerable<ValidationError> errors)
-        : base("One or more validation errors occurred.")
-    {
-        Errors = errors;
-    }
-
-    public IEnumerable<ValidationError>? Errors { get; }
+    public IEnumerable<ValidationError>? Errors { get; } = errors;
 }

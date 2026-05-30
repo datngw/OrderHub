@@ -1,8 +1,6 @@
 using Asp.Versioning;
 using MediatR;
-using Microsoft.AspNetCore.Http.HttpResults;
 using OrderHub.Api.Endpoints;
-using OrderHub.Api.Extensions;
 using OrderHub.Application.Common.Security;
 using OrderHub.Application.Features.AdminReports;
 using OrderHub.Application.Features.AdminReports.GetRevenueByDay;
@@ -36,17 +34,17 @@ public sealed class AdminReportEndpoints : IEndpointGroup
             .Produces<List<RevenueByDayResponse>>();
     }
 
-    private static async Task<Results<Ok<List<TopProductRevenueResponse>>, ProblemHttpResult>> HandleGetTopProducts(
+    private static async Task<IResult> HandleGetTopProducts(
         IMediator mediator, DateTime? from = null, DateTime? to = null, int top = 10, CancellationToken ct = default)
     {
         var result = await mediator.Send(new GetTopProductsQuery(from, to, top), ct);
-        return result.ToResponse();
+        return Results.Ok(result.Value);
     }
 
-    private static async Task<Results<Ok<List<RevenueByDayResponse>>, ProblemHttpResult>> HandleGetRevenueByDay(
+    private static async Task<IResult> HandleGetRevenueByDay(
         IMediator mediator, DateTime? from = null, DateTime? to = null, CancellationToken ct = default)
     {
         var result = await mediator.Send(new GetRevenueByDayQuery(from, to), ct);
-        return result.ToResponse();
+        return Results.Ok(result.Value);
     }
 }

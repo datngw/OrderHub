@@ -5,29 +5,29 @@ namespace OrderHub.Domain.Orders;
 public static class OrderErrors
 {
     public static Error NotFoundById(Guid id) =>
-        new("Orders.NotFound", $"Order with ID '{id}' was not found.", ErrorType.NotFound);
+        Error.NotFound("Orders.NotFound", $"Order with ID '{id}' was not found.");
 
     public static Error EmptyOrder =>
-        new("Orders.EmptyOrder", "Order must contain at least one item.", ErrorType.Validation);
+        Error.Problem("Orders.EmptyOrder", "Order must contain at least one item.");
 
     public static Error ProductNotFound(Guid productId) =>
-        new("Orders.ProductNotFound", $"Product with ID '{productId}' was not found.", ErrorType.NotFound);
+        Error.NotFound("Orders.ProductNotFound", $"Product with ID '{productId}' was not found.");
 
     public static Error ProductUnavailable(Guid productId) =>
-        new("Orders.ProductUnavailable", $"Product with ID '{productId}' is not available.", ErrorType.Validation);
+        Error.Problem("Orders.ProductUnavailable", $"Product with ID '{productId}' is not available.");
 
     public static Error InsufficientStock(string productName, int requested, int available) =>
-        new("Orders.InsufficientStock", $"Insufficient stock for '{productName}'. Requested: {requested}, Available: {available}.", ErrorType.Validation);
+        Error.Problem("Orders.InsufficientStock", $"Insufficient stock for '{productName}'. Requested: {requested}, Available: {available}.");
 
     public static Error AlreadyCancelled =>
-        new("Orders.AlreadyCancelled", "Order is already cancelled.", ErrorType.Conflict);
+        Error.Conflict("Orders.AlreadyCancelled", "Order is already cancelled.");
 
     public static Error CannotBeCancelled =>
-        new("Orders.CannotBeCancelled", "Only orders in 'Pending' status can be cancelled.", ErrorType.Validation);
+        Error.Problem("Orders.CannotBeCancelled", "Only orders in 'Pending' status can be cancelled.");
 
     public static Error InvalidStatusTransition(OrderStatusEnum current, OrderStatusEnum requested) =>
-        new("Orders.InvalidStatusTransition", $"Cannot transition order from '{current}' to '{requested}'.", ErrorType.Validation);
+        Error.Problem("Orders.InvalidStatusTransition", $"Cannot transition order from '{current}' to '{requested}'.");
 
     public static Error Forbidden =>
-        new("Orders.Forbidden", "You do not have permission to access this order.", ErrorType.Forbidden);
+        Error.Problem("Orders.Forbidden", "You do not have permission to access this order.");
 }
