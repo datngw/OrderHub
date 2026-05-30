@@ -1,5 +1,4 @@
 using FluentValidation;
-using OrderHub.Api.Middlewares;
 
 namespace OrderHub.Api.Filters;
 
@@ -10,32 +9,24 @@ public sealed class ValidationEndpointFilter<TRequest>(IValidator<TRequest> vali
         var request = context.Arguments.OfType<TRequest>().FirstOrDefault();
         if (request is null)
         {
-            return new CustomProblemResult(new CustomProblemDetails
-            {
-                Status = StatusCodes.Status400BadRequest,
-                Type = "BadRequest",
-                Title = "Bad request",
-                Detail = "Request body is required.",
-                TraceId = context.HttpContext.TraceIdentifier
-            });
+            return TypedResults.Problem(
+                statusCode: StatusCodes.Status400BadRequest,
+                type: "https://tools.ietf.org/html/rfc9110#section-15.5.1",
+                title: "Bad request",
+                detail: "Request body is required.");
         }
 
         var result = await validator.ValidateAsync(request, context.HttpContext.RequestAborted);
         if (!result.IsValid)
         {
             var errors = result.Errors
-                .Select(e => new CustomProblemDetails.ValidationError(e.PropertyName, e.ErrorMessage))
-                .ToList();
+                .GroupBy(e => e.PropertyName)
+                .ToDictionary(g => g.Key, g => g.Select(e => e.ErrorMessage).ToArray());
 
-            return new CustomProblemResult(new CustomProblemDetails
-            {
-                Status = StatusCodes.Status400BadRequest,
-                Type = "ValidationFailure",
-                Title = "Validation error",
-                Detail = "One or more validation errors has occurred",
-                TraceId = context.HttpContext.TraceIdentifier,
-                Errors = errors
-            });
+            return TypedResults.ValidationProblem(errors,
+                title: "Validation error",
+                type: "https://tools.ietf.org/html/rfc9110#section-15.5.1",
+                detail: "One or more validation errors have occurred");
         }
 
         return await next(context);

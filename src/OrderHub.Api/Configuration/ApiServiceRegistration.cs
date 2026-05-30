@@ -29,7 +29,16 @@ public static class ApiServiceRegistration
     private static void AddErrorHandling(IServiceCollection services)
     {
         services.AddExceptionHandler<GlobalExceptionHandler>();
-        services.AddProblemDetails();
+        services.AddProblemDetails(options =>
+        {
+            options.CustomizeProblemDetails = ctx =>
+            {
+                // Globally add traceId and timestamp to ALL error responses (RFC 9457)
+                ctx.ProblemDetails.Extensions["traceId"] = ctx.HttpContext.TraceIdentifier;
+                ctx.ProblemDetails.Extensions["timestamp"] = DateTime.UtcNow;
+                ctx.ProblemDetails.Instance ??= $"{ctx.HttpContext.Request.Method} {ctx.HttpContext.Request.Path}";
+            };
+        });
     }
 
     private static void AddSwagger(IServiceCollection services)

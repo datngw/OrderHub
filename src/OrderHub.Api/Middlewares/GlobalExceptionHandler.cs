@@ -1,25 +1,23 @@
 using Microsoft.AspNetCore.Diagnostics;
+using Microsoft.AspNetCore.Mvc;
+using OrderHub.Application.Common.Errors;
 using OrderHub.Application.Common.Exceptions;
 using OrderHub.Domain.Common;
 
 namespace OrderHub.Api.Middlewares;
 
-public sealed class GlobalExceptionHandler : IExceptionHandler
+public sealed class GlobalExceptionHandler(
+    ILogger<GlobalExceptionHandler> logger,
+    IProblemDetailsService problemDetailsService) : IExceptionHandler
 {
-    private readonly ILogger<GlobalExceptionHandler> _logger;
-
-    public GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logger)
-    {
-        _logger = logger;
-    }
-
-    public async ValueTask<bool> TryHandleAsync(HttpContext httpContext, Exception exception, CancellationToken ct)
+    public async ValueTask<bool> TryHandleAsync(
+        HttpContext httpContext, Exception exception, CancellationToken ct)
     {
         return exception switch
         {
-            BadHttpRequestException badRequestException => await HandleBadRequestExceptionAsync(httpContext, badRequestException, ct),
-            ValidationException validationException => await HandleValidationExceptionAsync(httpContext, validationException, ct),
-            DomainException domainException => await HandleDomainExceptionAsync(httpContext, domainException, ct),
+            BadHttpRequestException badRequest => await HandleBadRequestAsync(httpContext, badRequest, ct),
+            ValidationException validation => await HandleValidationExceptionAsync(httpContext, validation, ct),
+            DomainException domain => await HandleDomainExceptionAsync(httpContext, domain, ct),
             _ => await HandleUnexpectedExceptionAsync(httpContext, exception, ct)
         };
     }
@@ -27,121 +25,100 @@ public sealed class GlobalExceptionHandler : IExceptionHandler
     private async ValueTask<bool> HandleValidationExceptionAsync(
         HttpContext httpContext, ValidationException exception, CancellationToken ct)
     {
-        _logger.LogWarning(exception, "Validation failed");
+        logger.LogWarning(exception, "Validation failed");
 
         var errors = exception.Errors?
-            .Select(e => new CustomProblemDetails.ValidationError(e.PropertyName, e.ErrorMessage))
-            .ToList();
+            .GroupBy(e => e.PropertyName)
+            .ToDictionary(g => g.Key, g => g.Select(e => e.ErrorMessage).ToArray())
+            ?? new Dictionary<string, string[]>();
 
-        var problemDetails = new CustomProblemDetails
+        var problemDetails = new ValidationProblemDetails(errors)
         {
             Status = StatusCodes.Status400BadRequest,
-            Type = "ValidationFailure",
+            Type = "https://tools.ietf.org/html/rfc9110#section-15.5.1",
             Title = "Validation error",
-            Detail = "One or more validation errors has occurred",
-            TraceId = httpContext.TraceIdentifier,
-            Errors = errors
+            Detail = "One or more validation errors have occurred",
+            Instance = httpContext.Request.Path
         };
 
-        httpContext.Response.StatusCode = problemDetails.Status;
-
-        await httpContext.Response.WriteAsJsonAsync(problemDetails, ct);
-
-        return true;
+        return await WriteAsync(httpContext, problemDetails, ct);
     }
 
     private async ValueTask<bool> HandleDomainExceptionAsync(
         HttpContext httpContext, DomainException exception, CancellationToken ct)
     {
-        _logger.LogWarning(exception, "Domain error: {Message}", exception.Message);
+        logger.LogWarning(exception, "Domain error: {Message}", exception.Message);
 
-        var statusCode = MapToStatusCode(exception.Error);
+        var (statusCode, title, typeUri) = ErrorMapping.Map(exception.Error);
 
-        var problemDetails = new CustomProblemDetails
+        var problemDetails = new ProblemDetails
         {
             Status = statusCode,
-            Type = MapToErrorType(exception.Error),
-            Title = MapToTitle(exception.Error),
+            Type = typeUri,
+            Title = title,
             Detail = exception.Message,
-            TraceId = httpContext.TraceIdentifier
+            Instance = httpContext.Request.Path
         };
 
-        httpContext.Response.StatusCode = statusCode;
-
-        await httpContext.Response.WriteAsJsonAsync(problemDetails, ct);
-
-        return true;
+        return await WriteAsync(httpContext, problemDetails, ct);
     }
 
-    private async ValueTask<bool> HandleBadRequestExceptionAsync(
+    private async ValueTask<bool> HandleBadRequestAsync(
         HttpContext httpContext, BadHttpRequestException exception, CancellationToken ct)
     {
-        _logger.LogWarning(exception, "Bad request: {Message}", exception.Message);
+        logger.LogWarning(exception, "Bad request: {Message}", exception.Message);
 
-        var problemDetails = new CustomProblemDetails
+        var problemDetails = new ProblemDetails
         {
             Status = StatusCodes.Status400BadRequest,
-            Type = "BadRequest",
+            Type = "https://tools.ietf.org/html/rfc9110#section-15.5.1",
             Title = "Bad request",
             Detail = exception.InnerException?.Message ?? exception.Message,
-            TraceId = httpContext.TraceIdentifier
+            Instance = httpContext.Request.Path
         };
 
-        httpContext.Response.StatusCode = problemDetails.Status;
-
-        await httpContext.Response.WriteAsJsonAsync(problemDetails, ct);
-
-        return true;
+        return await WriteAsync(httpContext, problemDetails, ct);
     }
 
     private async ValueTask<bool> HandleUnexpectedExceptionAsync(
         HttpContext httpContext, Exception exception, CancellationToken ct)
     {
-        _logger.LogError(exception, "Unhandled exception occurred");
+        logger.LogError(exception, "Unhandled exception occurred. TraceId: {TraceId}",
+            httpContext.TraceIdentifier);
 
-        var problemDetails = new CustomProblemDetails
+        var problemDetails = new ProblemDetails
         {
             Status = StatusCodes.Status500InternalServerError,
-            Type = "ServerError",
+            Type = "https://tools.ietf.org/html/rfc9110#section-15.6.1",
             Title = "Server error",
-            Detail = "An unexpected error has occurred",
-            TraceId = httpContext.TraceIdentifier
+            Detail = GetSafeErrorMessage(exception, httpContext),
+            Instance = httpContext.Request.Path
         };
 
-        httpContext.Response.StatusCode = problemDetails.Status;
-
-        await httpContext.Response.WriteAsJsonAsync(problemDetails, ct);
-
-        return true;
+        return await WriteAsync(httpContext, problemDetails, ct);
     }
 
-    private static int MapToStatusCode(Error error) => error.Type switch
+    /// <summary>
+    /// In development, expose the full exception message for debugging.
+    /// In production, only expose messages from our own domain exceptions — never leak internal details.
+    /// </summary>
+    private static string? GetSafeErrorMessage(Exception exception, HttpContext httpContext)
     {
-        ErrorType.NotFound => StatusCodes.Status404NotFound,
-        ErrorType.Conflict => StatusCodes.Status409Conflict,
-        ErrorType.Unauthorized => StatusCodes.Status401Unauthorized,
-        ErrorType.Forbidden => StatusCodes.Status403Forbidden,
-        ErrorType.Validation => StatusCodes.Status400BadRequest,
-        _ => StatusCodes.Status400BadRequest
-    };
+        var env = httpContext.RequestServices.GetRequiredService<IHostEnvironment>();
+        return env.IsDevelopment()
+            ? exception.Message
+            : null;
+    }
 
-    private static string MapToErrorType(Error error) => error.Type switch
+    private async ValueTask<bool> WriteAsync(
+        HttpContext httpContext, ProblemDetails problemDetails, CancellationToken ct)
     {
-        ErrorType.NotFound => "NotFound",
-        ErrorType.Conflict => "Conflict",
-        ErrorType.Unauthorized => "Unauthorized",
-        ErrorType.Forbidden => "Forbidden",
-        ErrorType.Validation => "ValidationFailure",
-        _ => "BadRequest"
-    };
+        httpContext.Response.StatusCode = problemDetails.Status!.Value;
 
-    private static string MapToTitle(Error error) => error.Type switch
-    {
-        ErrorType.NotFound => "Not found",
-        ErrorType.Conflict => "Conflict",
-        ErrorType.Unauthorized => "Unauthorized",
-        ErrorType.Forbidden => "Forbidden",
-        ErrorType.Validation => "Validation error",
-        _ => "Bad request"
-    };
+        return await problemDetailsService.TryWriteAsync(new ProblemDetailsContext
+        {
+            HttpContext = httpContext,
+            ProblemDetails = problemDetails
+        });
+    }
 }

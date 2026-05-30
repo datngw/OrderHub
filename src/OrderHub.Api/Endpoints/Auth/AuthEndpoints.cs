@@ -5,7 +5,6 @@ using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using OrderHub.Api.Endpoints;
 using OrderHub.Api.Extensions;
-using OrderHub.Api.Middlewares;
 using OrderHub.Api.Endpoints.Auth.Requests;
 using OrderHub.Application.Common.Security;
 using OrderHub.Application.Features.Auth;
@@ -72,28 +71,28 @@ public sealed class AuthEndpoints : IEndpointGroup
             .ProducesProblem(StatusCodes.Status429TooManyRequests);
     }
 
-    private static async Task<Results<Created<AuthResponse>, CustomProblemResult>> HandleRegister(
+    private static async Task<Results<Created<AuthResponse>, ProblemHttpResult>> HandleRegister(
         [FromBody] RegisterRequest request, IMediator mediator, CancellationToken ct)
     {
         var result = await mediator.Send(new RegisterCommand(request.Email, request.Password, request.FullName), ct);
         return result.ToCreatedResponse("/api/v1/auth/login");
     }
 
-    private static async Task<Results<Ok<AuthResponse>, CustomProblemResult>> HandleLogin(
+    private static async Task<Results<Ok<AuthResponse>, ProblemHttpResult>> HandleLogin(
         [FromBody] LoginRequest request, IMediator mediator, CancellationToken ct)
     {
         var result = await mediator.Send(new LoginCommand(request.Email, request.Password), ct);
         return result.ToResponse();
     }
 
-    private static async Task<Results<Ok<AuthResponse>, CustomProblemResult>> HandleRefresh(
+    private static async Task<Results<Ok<AuthResponse>, ProblemHttpResult>> HandleRefresh(
         [FromBody] RefreshTokenRequest request, IMediator mediator, CancellationToken ct)
     {
         var result = await mediator.Send(new RefreshCommand(request.RefreshToken), ct);
         return result.ToResponse();
     }
 
-    private static async Task<Results<NoContent, CustomProblemResult>> HandleLogout(
+    private static async Task<Results<NoContent, ProblemHttpResult>> HandleLogout(
         [FromBody] RefreshTokenRequest request, IMediator mediator, CancellationToken ct)
     {
         var result = await mediator.Send(new LogoutCommand(request.RefreshToken), ct);
