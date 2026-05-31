@@ -48,5 +48,11 @@ public class ProductConfiguration : IEntityTypeConfiguration<Product>
         builder.HasIndex(p => new { p.IsActive, p.Price })
             .IncludeProperties("Id", "SKU", "Name", "Description", "Stock", "Category", "CreatedAt")
             .HasDatabaseName("IX_Products_IsActive_Price");
+
+        // GIN trigram index for case-insensitive substring search: WHERE Name ILIKE '%search%'
+        builder.HasIndex(p => p.Name)
+            .HasMethod("gin")
+            .HasOperators("gin_trgm_ops")
+            .HasDatabaseName("IX_Products_Name_Trgm");
     }
 }

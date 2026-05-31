@@ -91,7 +91,6 @@ public sealed class CreateOrderCommandHandler(
             orderRepository.Add(order);
 
             cache.InvalidateReports();
-            cache.InvalidateProducts();
 
             logger.LogInformation("Order {OrderId} created for user {UserId} with total {TotalAmount}", order.Id, userId, totalAmount);
 

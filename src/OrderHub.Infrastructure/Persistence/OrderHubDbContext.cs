@@ -24,6 +24,7 @@ public class OrderHubDbContext : DbContext
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        modelBuilder.HasPostgresExtension("pg_trgm");
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(OrderHubDbContext).Assembly);
     }
 

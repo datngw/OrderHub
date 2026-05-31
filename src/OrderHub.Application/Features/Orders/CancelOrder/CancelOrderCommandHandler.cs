@@ -55,7 +55,6 @@ public sealed class CancelOrderCommandHandler(
             order.Status = OrderStatusEnum.Cancelled;
 
             cache.InvalidateReports();
-            cache.InvalidateProducts();
 
             logger.LogInformation("Order {OrderId} cancelled by user {UserId}", request.OrderId, userContext.UserId);
 

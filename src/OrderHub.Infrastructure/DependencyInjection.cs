@@ -6,6 +6,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using OrderHub.Application.Common;
+using OrderHub.Application.Common.Caching;
 using OrderHub.Application.Common.Security;
 using OrderHub.Application.Common.Persistence;
 using OrderHub.Domain.Orders;
@@ -77,6 +78,8 @@ public static class DependencyInjection
         {
             options.SizeLimit = 10_000;
         });
+
+        services.AddSingleton<CacheStampedeGuard>();
     }
 
     private static void AddAuthentication(IServiceCollection services, IConfiguration configuration)

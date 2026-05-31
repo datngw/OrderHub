@@ -41,7 +41,7 @@ public class ProductRepository(OrderHubDbContext context) : IProductRepository
         if (maxPrice.HasValue)
             query = query.Where(p => p.Price <= maxPrice.Value);
         if (!string.IsNullOrWhiteSpace(search))
-            query = query.Where(p => p.Name.Contains(search));
+            query = query.Where(p => EF.Functions.ILike(p.Name, $"%{search}%"));
 
         query = ApplySorting(query, sortBy, sortOrder);
 

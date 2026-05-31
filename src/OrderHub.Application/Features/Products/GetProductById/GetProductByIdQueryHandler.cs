@@ -11,21 +11,23 @@ namespace OrderHub.Application.Features.Products.GetProductById;
 
 public sealed class GetProductByIdQueryHandler(
     IProductRepository productRepository,
-    IMemoryCache cache)
+    IMemoryCache cache,
+    CacheStampedeGuard stampedeGuard)
     : IQueryHandler<GetProductByIdQuery, ProductResponse>
 {
     public async Task<Result<ProductResponse>> Handle(GetProductByIdQuery request, CancellationToken cancellationToken)
     {
         var cacheKey = CacheKeys.Products.ById(request.Id);
 
-        var cached = await cache.GetOrCreateAsync(cacheKey, async entry =>
+        var cached = await stampedeGuard.GetOrCreateAsync(cache, cacheKey, async entry =>
+        {
+            var product = await productRepository.GetByIdAsync(request.Id, cancellationToken);
+            return product is null || !product.IsActive ? null : product.Adapt<ProductResponse>();
+        }, entry =>
         {
             entry.SetSlidingExpiration(TimeSpan.FromSeconds(30))
                 .SetAbsoluteExpiration(TimeSpan.FromMinutes(10))
                 .SetSize(1);
-
-            var product = await productRepository.GetByIdAsync(request.Id, cancellationToken);
-            return product is null || !product.IsActive ? null : product.Adapt<ProductResponse>();
         });
 
         if (cached is null)

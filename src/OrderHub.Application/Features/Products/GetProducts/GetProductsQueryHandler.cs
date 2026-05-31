@@ -10,7 +10,7 @@ using OrderHub.Domain.Products;
 
 namespace OrderHub.Application.Features.Products.GetProducts;
 
-public sealed class GetProductsQueryHandler(IProductRepository productRepository, IMemoryCache cache)
+public sealed class GetProductsQueryHandler(IProductRepository productRepository, IMemoryCache cache, CacheStampedeGuard stampedeGuard)
     : IQueryHandler<GetProductsQuery, PagedResult<ProductResponse>>
 {
     public async Task<Result<PagedResult<ProductResponse>>> Handle(GetProductsQuery request, CancellationToken cancellationToken)
@@ -21,12 +21,8 @@ public sealed class GetProductsQueryHandler(IProductRepository productRepository
             request.MinPrice, request.MaxPrice, request.Search,
             request.SortBy, request.SortOrder);
 
-        var cached = await cache.GetOrCreateAsync(cacheKey, async entry =>
+        var cached = await stampedeGuard.GetOrCreateAsync(cache, cacheKey, async entry =>
         {
-            entry.SetSlidingExpiration(TimeSpan.FromSeconds(30))
-                .SetAbsoluteExpiration(TimeSpan.FromMinutes(5))
-                .SetSize(1);
-
             var (items, totalCount) = await productRepository.GetFilteredAsync(
                 request.Category, request.MinPrice, request.MaxPrice,
                 request.Search, request.SortBy, request.SortOrder,
@@ -39,6 +35,11 @@ public sealed class GetProductsQueryHandler(IProductRepository productRepository
                 Page = request.Page,
                 PageSize = request.PageSize
             };
+        }, entry =>
+        {
+            entry.SetSlidingExpiration(TimeSpan.FromSeconds(30))
+                .SetAbsoluteExpiration(TimeSpan.FromMinutes(5))
+                .SetSize(1);
         });
 
         return Result<PagedResult<ProductResponse>>.Success(cached!);

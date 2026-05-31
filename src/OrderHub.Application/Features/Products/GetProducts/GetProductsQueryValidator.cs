@@ -1,4 +1,5 @@
 using FluentValidation;
+using OrderHub.Domain.Products;
 
 namespace OrderHub.Application.Features.Products.GetProducts;
 
@@ -17,6 +18,10 @@ public sealed class GetProductsQueryValidator : AbstractValidator<GetProductsQue
 
         RuleFor(x => x.PageSize)
             .InclusiveBetween(1, 100);
+
+        RuleFor(x => x.Search)
+            .MaximumLength(ProductConstraints.NameMaxLength)
+            .When(x => x.Search is not null);
 
         When(x => x.SortBy is not null, () =>
         {
