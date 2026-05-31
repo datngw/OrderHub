@@ -38,6 +38,12 @@ flowchart TD
     Application -- "Coordinates Domain Entities & Rules" --> Domain
 ```
 
+:::tip Conceptual Architecture Model
+For a conceptual representation of the Clean Architecture onion model showing project layers and inward dependency flows, refer to the diagram below:
+
+![Clean Architecture Diagram](/img/clean_architecture.png)
+:::
+
 ### Key Rules of the Clean Architecture Strategy
 1.  **Inward-Pointing Dependencies:** Dependencies point strictly inward. The `Domain` layer sits at the core and has zero reference to other projects or external libraries. The `Application` layer depends only on `Domain`. The `Infrastructure` and `API` projects depend on `Application` and transitively on `Domain`.
 2.  **Abstractions and Dependency Inversion:** Application logic coordinates operations using interface contracts (e.g., repository and token generation contracts). The `Infrastructure` layer implements these interfaces. Runtime bindings are resolved in the API layer (`Program.cs`) via ASP.NET Core Dependency Injection.
