@@ -88,6 +88,71 @@ graph TB
 
 This section describes the internal details of the building blocks within each layer of the solution.
 
+```mermaid
+flowchart TD
+    %% Styling definitions
+    classDef domain fill:#fff9c4,stroke:#fbc02d,stroke-width:2px,color:#333;
+    classDef app fill:#e8f5e9,stroke:#4caf50,stroke-width:2px,color:#333;
+    classDef infra fill:#e3f2fd,stroke:#2196f3,stroke-width:2px,color:#333;
+    classDef api fill:#fce4ec,stroke:#e91e63,stroke-width:2px,color:#333;
+
+    subgraph API ["API Layer (OrderHub.Api)"]
+        Program["Program.cs<br/>(Application Boostrap & DI)"]:::api
+        Middleware["Middleware Pipeline<br/>(CorrelationId, GlobalException, RateLimiting)"]:::api
+        Endpoints["Minimal API Endpoints<br/>(Auth, Products, Orders, Admin Reports)"]:::api
+        Filters["Route Filters<br/>(HtmlSanitize)"]:::api
+        ResultExt["ResultExtensions<br/>(Maps Result<T> to HTTP Status)"]:::api
+        
+        Program --> Middleware
+        Middleware --> Endpoints
+        Endpoints --> Filters
+        Endpoints --> ResultExt
+    end
+
+    subgraph Application ["Application Layer (OrderHub.Application)"]
+        CQRS["CQRS Features<br/>(Commands / Queries / Handlers)"]:::app
+        Validators["FluentValidators<br/>(Input Constraints Validation)"]:::app
+        Behaviors["Pipeline Behaviors<br/>(Logging, Validation Behaviors)"]:::app
+        CacheGuard["CacheStampedeGuard<br/>(SemaphoreSlim Thundering Herd Lock)"]:::app
+        Result["Result / Error Models<br/>(Result Pattern Value Containers)"]:::app
+        
+        Behaviors --> CQRS
+        CQRS --> Validators
+        CQRS --> CacheGuard
+        CQRS --> Result
+    end
+
+    subgraph Infrastructure ["Infrastructure Layer (OrderHub.Infrastructure)"]
+        DbContext["OrderHubDbContext<br/>(EF Core DB Context)"]:::infra
+        Configs["EF Configurations<br/>(Indexes, Table mappings)"]:::infra
+        Repos["Repositories<br/>(Product, Order, User, RefreshToken)"]:::infra
+        UoW["Unit of Work<br/>(Transaction Commitment)"]:::infra
+        TokenService["TokenService<br/>(JWT generation & rotation)"]:::infra
+        Background["Hosted Services<br/>(Migration & Seeder)"]:::infra
+        
+        DbContext --- Configs
+        Repos --> DbContext
+        UoW --> DbContext
+        Background --> DbContext
+    end
+
+    subgraph Domain ["Domain Layer (OrderHub.Domain)"]
+        Entities["Domain Entities<br/>(Product, Order, User, OrderItem)"]:::domain
+        Constraints["Domain Constraints<br/>(Max length constants)"]:::domain
+        Errors["Domain Errors<br/>(Static business rule violations)"]:::domain
+        RepoInterfaces["Repository Interfaces<br/>(IProductRepository, IOrderRepository, etc.)"]:::domain
+    end
+
+    %% Dependency & Invocation flows
+    Endpoints -->|Dispatches MediatR requests| Behaviors
+    CQRS -->|Queries / Persists Data| RepoInterfaces
+    CQRS -->|Generates Access/Refresh Tokens| TokenService
+    Repos -.->|Implements contracts| RepoInterfaces
+    Repos -->|Queries / Returns| Entities
+    Entities -->|Validation checks against| Constraints
+    CQRS -->|Yields static errors| Errors
+```
+
 ### 5.3.1 Domain Layer (`OrderHub.Domain`)
 The Domain layer contains the core database entities, business rules, and interface contracts. It has zero external dependencies and does not refer to databases, HTTP web contexts, or serialization libraries.
 

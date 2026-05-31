@@ -12,29 +12,30 @@ This section describes the strategic design choices, architectural patterns, and
 
 OrderHub implements **Clean Architecture** to maintain a strict separation of business logic from external frameworks, infrastructure, and delivery layers. 
 
-```
-                       +---------------------------------------+
-                       |              API Layer                |
-                       |       (Kestrel, Endpoint Routing)      |
-                       +-------------------+-------------------+
-                                           | Inward Dependency
-                                           v
-                       +-------------------+-------------------+
-                       |         Infrastructure Layer          |
-                       |       (EF Core, PostgreSQL, Auth)      |
-                       +-------------------+-------------------+
-                                           | Inward Dependency
-                                           v
-                       +-------------------+-------------------+
-                       |         Application Layer             |
-                       |       (CQRS Handlers, DTOs, Logic)    |
-                       +-------------------+-------------------+
-                                           | Inward Dependency
-                                           v
-                       +-------------------+-------------------+
-                       |           Domain Layer                |
-                       |       (Entities, Domain Rules, Repos) |
-                       +---------------------------------------+
+```mermaid
+flowchart TD
+    %% Styling definitions
+    classDef domain fill:#fff9c4,stroke:#fbc02d,stroke-width:2px,color:#333;
+    classDef app fill:#e8f5e9,stroke:#4caf50,stroke-width:2px,color:#333;
+    classDef infra fill:#e3f2fd,stroke:#2196f3,stroke-width:2px,color:#333;
+    classDef api fill:#fce4ec,stroke:#e91e63,stroke-width:2px,color:#333;
+
+    subgraph OuterLayers ["Outer Layers (Frameworks & Delivery)"]
+        API["API Layer<br/>(Program.cs, Minimal APIs, Filters, Middlewares)"]:::api
+        Infrastructure["Infrastructure Layer<br/>(EF Core, PostgreSQL Repos, CacheStampedeGuard, Auth)"]:::infra
+    end
+
+    subgraph CoreLayers ["Core Layers (Pure C# Business Logic)"]
+        Application["Application Layer<br/>(CQRS Handlers, Pipeline Behaviors, DTOs, Interfaces)"]:::app
+        Domain["Domain Layer<br/>(Entities, Constraints, Errors, Repository Interfaces)"]:::domain
+    end
+
+    %% Dependency flows (Strictly inward-pointing)
+    API -->|Triggers CQRS Commands/Queries| Application
+    API -.->|Registers Types via DI| Infrastructure
+    Infrastructure -->|Implements Interfaces / Repositories| Application
+    Infrastructure -->|Maps DB Configurations to Domain Models| Domain
+    Application -->|Coordinates Domain Entities & Rules| Domain
 ```
 
 ### Key Rules of the Clean Architecture Strategy

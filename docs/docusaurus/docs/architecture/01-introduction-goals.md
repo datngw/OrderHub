@@ -19,23 +19,49 @@ Key capabilities of OrderHub include:
 *   **Admin Business Intelligence:** High-performance analytical reports for revenue metrics and top-selling products, optimized with cache stampede (thundering herd) guards and version-based cache invalidation.
 *   **Operational Observability:** Structured log stream generation via Serilog, featuring PII (Personally Identifiable Information) and sensitive data redaction, pre-integrated with correlation ID tracking.
 
-```
-+-------------------------------------------------------+
-|                    Client Apps                        |
-|             (Customer Web/Mobile, Admin Portal)        |
-+-------------------------------------------+-----------+
-                                            | HTTPS / REST
-                                            v
-+-------------------------------------------------------+
-|                    OrderHub API                       |
-|   (Clean Architecture Monolith - .NET 8 Core)         |
-+-------------------------------------------+-----------+
-                                            | EF Core / Npgsql (TCP)
-                                            v
-+-------------------------------------------------------+
-|                   PostgreSQL 16                       |
-|           (Primary Transactional Database)            |
-+-------------------------------------------------------+
+```mermaid
+flowchart TD
+    %% Styling definitions
+    classDef client fill:#e8f4fd,stroke:#1d8cf8,stroke-width:2px,color:#1d8cf8;
+    classDef api fill:#eafaf1,stroke:#2dce89,stroke-width:2px,color:#2dce89;
+    classDef db fill:#fef5e7,stroke:#f5365c,stroke-width:2px,color:#f5365c;
+    classDef logs fill:#f4f5f7,stroke:#8898aa,stroke-width:2px,color:#8898aa;
+
+    subgraph ClientLayer ["1. Client Layer"]
+        CustomerApp["Customer Clients<br/>(SPA, Mobile Apps)"]:::client
+        AdminPortal["Admin Dashboard<br/>(Sales Analytics / CRUD)"]:::client
+        HealthProbes["Infrastructure Probes<br/>(Liveness / Readiness)"]:::client
+    end
+
+    subgraph APILayer ["2. OrderHub API Process (.NET 8 Monolith)"]
+        AuthFilter["Security & Routing<br/>(JWT, Rate Limiting, XSS Sanitize)"]:::api
+        CQRS["Application CQRS Engine<br/>(MediatR Handlers / Validation)"]:::api
+        LocalCache["In-Process Cache<br/>(IMemoryCache + CacheStampedeGuard)"]:::api
+        
+        AuthFilter --> CQRS
+        CQRS <--> LocalCache
+    end
+
+    subgraph PersistenceLayer ["3. Database Layer (PostgreSQL 16)"]
+        Database[("Primary DB<br/>(OrderHub Schema)")]:::db
+        PessimisticLocks["Pessimistic Row Locks<br/>(SELECT ... FOR UPDATE)"]:::db
+        GINIndex["GIN Trigram Index<br/>(pg_trgm Search Index)"]:::db
+
+        Database --- PessimisticLocks
+        Database --- GINIndex
+    end
+
+    subgraph TelemetryLayer ["4. Telemetry Layer"]
+        SeqLogs[("Seq Logging Server<br/>(Structured Serilog Ingest)")]:::logs
+    end
+
+    %% Relationships
+    CustomerApp -->|HTTPS / REST JSON<br/>(Customer Credentials)| AuthFilter
+    AdminPortal -->|HTTPS / REST JSON<br/>(Admin Credentials)| AuthFilter
+    HealthProbes -->|HTTP GET /health/*| AuthFilter
+
+    CQRS -->|EF Core / Npgsql TCP| Database
+    APILayer -->|Serilog Sink HTTP/TCP| SeqLogs
 ```
 
 ## 1.2 Business Goals
@@ -57,7 +83,7 @@ The system architecture is driven by the following prioritized quality goals:
 
 | Priority | Quality Attribute | Scenario / Goal | Architectural Strategy |
 |:---:|---|---|---|
-| **P0** | **Transactional Correctness** | Under a concurrent load of 100 checkout requests for a product with 10 units in stock, exactly 10 orders must succeed. 90 must fail gracefully. Stock must be exactly 0. | Database-level row locking via EF Core query interception. Isolated transactions wrapped in a Unit of Work. |
+| **P0** | **Transactional Correctness** | Under a concurrent load of 100 checkout requests for a product with 10 units in stock, exactly 10 orders must succeed. 90 must fail gracefully. Stock must be exactly 0. | Database-level row locking via raw SQL query interpolation (`FOR UPDATE`). Isolated transactions wrapped in a Unit of Work. |
 | **P0** | **Application Security** | Zero leakage of credentials or PII in application logs. Safe execution of input text containing HTML elements. | Custom Serilog destructuring policy and event filter. HTML sanitization filter on HTTP endpoint parameters. |
 | **P0** | **Core Testability** | Ensure changes do not break business logic. Maintain regression-free deployment cycles. | Strict separation of layers, ≥60% unit test coverage in `Application` layer, and integration tests using Testcontainers. |
 | **P1** | **Operational Observability** | Trace a request's execution flow end-to-end across multiple threads and services. | Correlation ID middleware injecting trace headers into HTTP headers and Serilog context. |
