@@ -22,10 +22,9 @@ public sealed class CancelOrderCommandHandler(
 {
     public async Task<Result> Handle(CancelOrderCommand request, CancellationToken cancellationToken)
     {
-        await unitOfWork.BeginTransactionAsync(cancellationToken);
-        try
+        return await unitOfWork.ExecuteInTransactionAsync(async ct =>
         {
-            var order = await orderRepository.GetByIdForUpdateAsync(request.OrderId, cancellationToken);
+            var order = await orderRepository.GetByIdForUpdateAsync(request.OrderId, ct);
 
             if (order is null)
             {
@@ -54,7 +53,7 @@ public sealed class CancelOrderCommandHandler(
             }
 
             var productIds = order.Items.Select(i => i.ProductId).ToList();
-            var products = await productRepository.LockForUpdateAsync(productIds, cancellationToken);
+            var products = await productRepository.LockForUpdateAsync(productIds, ct);
             var productMap = products.ToDictionary(p => p.Id);
 
             foreach (var item in order.Items)
@@ -65,20 +64,12 @@ public sealed class CancelOrderCommandHandler(
 
             order.Status = OrderStatusEnum.Cancelled;
 
-            await unitOfWork.SaveChangesAsync(cancellationToken);
-            await unitOfWork.CommitTransactionAsync(cancellationToken);
-
             cache.InvalidateReports();
             cache.InvalidateProducts();
 
             logger.LogInformation("Order {OrderId} cancelled by user {UserId}", request.OrderId, userContext.UserId);
 
             return Result.Success();
-        }
-        catch
-        {
-            await unitOfWork.RollbackTransactionAsync(cancellationToken);
-            throw;
-        }
+        }, cancellationToken);
     }
 }

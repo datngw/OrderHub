@@ -32,6 +32,11 @@ public class CancelOrderCommandHandlerTests
         _cache = MockHelpers.CreateMemoryCache();
         var logger = Mock.Of<ILogger<CancelOrderCommandHandler>>();
 
+        // ExecuteInTransactionAsync passes the action through directly
+        _unitOfWorkMock
+            .Setup(u => u.ExecuteInTransactionAsync(It.IsAny<Func<CancellationToken, Task<Result>>>(), It.IsAny<CancellationToken>()))
+            .Returns<Func<CancellationToken, Task<Result>>, CancellationToken>((action, ct) => action(ct));
+
         _handler = new CancelOrderCommandHandler(
             _userContextMock.Object,
             _orderRepositoryMock.Object,
@@ -87,10 +92,6 @@ public class CancelOrderCommandHandlerTests
             .Setup(r => r.LockForUpdateAsync(It.IsAny<IEnumerable<Guid>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync([product]);
 
-        _unitOfWorkMock
-            .Setup(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync(1);
-
         var command = new CancelOrderCommand(order.Id);
 
         // Act
@@ -100,9 +101,6 @@ public class CancelOrderCommandHandlerTests
         result.IsSuccess.Should().BeTrue();
         order.Status.Should().Be(OrderStatusEnum.Cancelled);
         product.Stock.Should().Be(10);
-
-        _unitOfWorkMock.Verify(u => u.BeginTransactionAsync(It.IsAny<CancellationToken>()), Times.Once);
-        _unitOfWorkMock.Verify(u => u.CommitTransactionAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]

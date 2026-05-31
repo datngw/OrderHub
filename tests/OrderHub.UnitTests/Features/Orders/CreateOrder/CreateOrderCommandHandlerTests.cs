@@ -34,6 +34,11 @@ public class CreateOrderCommandHandlerTests
         _cache = MockHelpers.CreateMemoryCache();
         var logger = Mock.Of<ILogger<CreateOrderCommandHandler>>();
 
+        // ExecuteInTransactionAsync passes the action through directly
+        _unitOfWorkMock
+            .Setup(u => u.ExecuteInTransactionAsync(It.IsAny<Func<CancellationToken, Task<Result<OrderResponse>>>>(), It.IsAny<CancellationToken>()))
+            .Returns<Func<CancellationToken, Task<Result<OrderResponse>>>, CancellationToken>((action, ct) => action(ct));
+
         _handler = new CreateOrderCommandHandler(
             _userContextMock.Object,
             _orderRepositoryMock.Object,
@@ -58,10 +63,6 @@ public class CreateOrderCommandHandlerTests
             .Setup(r => r.LockForUpdateAsync(It.IsAny<IEnumerable<Guid>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<Product> { product1, product2 });
 
-        _unitOfWorkMock
-            .Setup(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync(1);
-
         var command = new CreateOrderCommand(
         [
             new CreateOrderItem(product1.Id, 2),
@@ -78,8 +79,6 @@ public class CreateOrderCommandHandlerTests
         result.Value.Items.Should().HaveCount(2);
         result.Value.TotalAmount.Should().Be(10m * 2 + 20m * 3);
 
-        _unitOfWorkMock.Verify(u => u.BeginTransactionAsync(It.IsAny<CancellationToken>()), Times.Once);
-        _unitOfWorkMock.Verify(u => u.CommitTransactionAsync(It.IsAny<CancellationToken>()), Times.Once);
         _orderRepositoryMock.Verify(r => r.Add(It.IsAny<Order>()), Times.Once);
     }
 
@@ -179,10 +178,6 @@ public class CreateOrderCommandHandlerTests
             .Setup(r => r.LockForUpdateAsync(It.IsAny<IEnumerable<Guid>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync([product]);
 
-        _unitOfWorkMock
-            .Setup(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync(1);
-
         var command = new CreateOrderCommand(
         [
             new CreateOrderItem(product.Id, 3)
@@ -197,7 +192,7 @@ public class CreateOrderCommandHandlerTests
     }
 
     [Fact]
-    public async Task Handle_Exception_RollsBackTransaction()
+    public async Task Handle_Exception_ThrownFromHandler()
     {
         // Arrange
         var userId = Guid.NewGuid();
@@ -210,9 +205,10 @@ public class CreateOrderCommandHandlerTests
             .Setup(r => r.LockForUpdateAsync(It.IsAny<IEnumerable<Guid>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync([product]);
 
-        _unitOfWorkMock
-            .Setup(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()))
-            .ThrowsAsync(new InvalidOperationException("Database error"));
+        // Simulate exception from the action (e.g., repository throws)
+        _orderRepositoryMock
+            .Setup(r => r.Add(It.IsAny<Order>()))
+            .Throws(new InvalidOperationException("Database error"));
 
         var command = new CreateOrderCommand(
         [
@@ -222,11 +218,8 @@ public class CreateOrderCommandHandlerTests
         // Act
         var act = () => _handler.Handle(command, CancellationToken.None);
 
-        // Assert
+        // Assert — exception propagates through ExecuteInTransactionAsync
         await act.Should().ThrowAsync<InvalidOperationException>();
-
-        _unitOfWorkMock.Verify(u => u.RollbackTransactionAsync(It.IsAny<CancellationToken>()), Times.Once);
-        _unitOfWorkMock.Verify(u => u.CommitTransactionAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
     private static Product CreateProduct(int stock, decimal price)

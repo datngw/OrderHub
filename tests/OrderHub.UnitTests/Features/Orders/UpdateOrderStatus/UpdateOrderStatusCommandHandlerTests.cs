@@ -26,6 +26,11 @@ public class UpdateOrderStatusCommandHandlerTests
         _cache = MockHelpers.CreateMemoryCache();
         var logger = Mock.Of<ILogger<UpdateOrderStatusCommandHandler>>();
 
+        // ExecuteInTransactionAsync passes the action through directly
+        _unitOfWorkMock
+            .Setup(u => u.ExecuteInTransactionAsync(It.IsAny<Func<CancellationToken, Task<Result>>>(), It.IsAny<CancellationToken>()))
+            .Returns<Func<CancellationToken, Task<Result>>, CancellationToken>((action, ct) => action(ct));
+
         _handler = new UpdateOrderStatusCommandHandler(
             _orderRepositoryMock.Object,
             _unitOfWorkMock.Object,
@@ -50,10 +55,6 @@ public class UpdateOrderStatusCommandHandlerTests
             .Setup(r => r.GetByIdForUpdateAsync(order.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(order);
 
-        _unitOfWorkMock
-            .Setup(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync(1);
-
         var command = new UpdateOrderStatusCommand(order.Id, OrderStatusEnum.Confirmed);
 
         // Act
@@ -62,8 +63,6 @@ public class UpdateOrderStatusCommandHandlerTests
         // Assert
         result.IsSuccess.Should().BeTrue();
         order.Status.Should().Be(OrderStatusEnum.Confirmed);
-
-        _unitOfWorkMock.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -82,10 +81,6 @@ public class UpdateOrderStatusCommandHandlerTests
         _orderRepositoryMock
             .Setup(r => r.GetByIdForUpdateAsync(order.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(order);
-
-        _unitOfWorkMock
-            .Setup(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync(1);
 
         var command = new UpdateOrderStatusCommand(order.Id, OrderStatusEnum.Shipped);
 
@@ -113,10 +108,6 @@ public class UpdateOrderStatusCommandHandlerTests
         _orderRepositoryMock
             .Setup(r => r.GetByIdForUpdateAsync(order.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(order);
-
-        _unitOfWorkMock
-            .Setup(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync(1);
 
         var command = new UpdateOrderStatusCommand(order.Id, OrderStatusEnum.Delivered);
 

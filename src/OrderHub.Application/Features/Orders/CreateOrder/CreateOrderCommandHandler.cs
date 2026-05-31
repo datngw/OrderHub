@@ -24,19 +24,19 @@ public sealed class CreateOrderCommandHandler(
 {
     public async Task<Result<OrderResponse>> Handle(CreateOrderCommand request, CancellationToken cancellationToken)
     {
-        await unitOfWork.BeginTransactionAsync(cancellationToken);
-        try
+        var userId = userContext.UserId;
+        var productIds = request.Items.Select(i => i.ProductId).Distinct().ToList();
+
+        logger.LogInformation("Creating order for user {UserId} with {ItemCount} items", userId, productIds.Count);
+
+        return await unitOfWork.ExecuteInTransactionAsync(async ct =>
         {
-            var userId = userContext.UserId;
-            var productIds = request.Items.Select(i => i.ProductId).Distinct().ToList();
-
-            logger.LogInformation("Creating order for user {UserId} with {ItemCount} items", userId, productIds.Count);
-
-            var lockedProducts = await productRepository.LockForUpdateAsync(productIds, cancellationToken);
+            var lockedProducts = await productRepository.LockForUpdateAsync(productIds, ct);
             var productMap = lockedProducts.ToDictionary(p => p.Id);
 
-            var orderItems = new List<OrderItem>();
+            // Phase 1: Validate all items — no mutations
             var errors = new List<Error>();
+            var validatedItems = new List<(Product Product, int Quantity)>();
 
             foreach (var item in request.Items)
             {
@@ -62,21 +62,27 @@ public sealed class CreateOrderCommandHandler(
                     continue;
                 }
 
-                product.Stock -= item.Quantity;
-
-                orderItems.Add(new OrderItem
-                {
-                    ProductId = product.Id,
-                    Quantity = item.Quantity,
-                    UnitPrice = product.Price
-                });
+                validatedItems.Add((product, item.Quantity));
             }
 
             if (errors.Count > 0)
             {
-                await unitOfWork.RollbackTransactionAsync(cancellationToken);
                 logger.LogWarning("Order creation failed for user {UserId}: {ErrorCode}", userId, errors[0].Code);
                 return Result<OrderResponse>.Failure(errors[0]);
+            }
+
+            // Phase 2: Mutate — only runs when all items are valid
+            var orderItems = new List<OrderItem>();
+            foreach (var (product, quantity) in validatedItems)
+            {
+                product.Stock -= quantity;
+
+                orderItems.Add(new OrderItem
+                {
+                    ProductId = product.Id,
+                    Quantity = quantity,
+                    UnitPrice = product.Price
+                });
             }
 
             var totalAmount = orderItems.Sum(i => i.UnitPrice * i.Quantity);
@@ -90,8 +96,6 @@ public sealed class CreateOrderCommandHandler(
             };
 
             orderRepository.Add(order);
-            await unitOfWork.SaveChangesAsync(cancellationToken);
-            await unitOfWork.CommitTransactionAsync(cancellationToken);
 
             cache.InvalidateReports();
             cache.InvalidateProducts();
@@ -99,11 +103,6 @@ public sealed class CreateOrderCommandHandler(
             logger.LogInformation("Order {OrderId} created for user {UserId} with total {TotalAmount}", order.Id, userId, totalAmount);
 
             return Result<OrderResponse>.Success(order.Adapt<OrderResponse>());
-        }
-        catch
-        {
-            await unitOfWork.RollbackTransactionAsync(cancellationToken);
-            throw;
-        }
+        }, cancellationToken);
     }
 }

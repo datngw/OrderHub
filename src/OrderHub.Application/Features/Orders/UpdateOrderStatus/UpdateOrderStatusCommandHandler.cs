@@ -25,44 +25,45 @@ public sealed class UpdateOrderStatusCommandHandler(
 
     public async Task<Result> Handle(UpdateOrderStatusCommand request, CancellationToken cancellationToken)
     {
-        var order = await orderRepository.GetByIdForUpdateAsync(request.OrderId, cancellationToken);
-
-        if (order is null)
+        return await unitOfWork.ExecuteInTransactionAsync(async ct =>
         {
-            logger.LogWarning("Order status update failed: order {OrderId} not found", request.OrderId);
-            return Result.Failure(OrderErrors.NotFoundById(request.OrderId));
-        }
+            var order = await orderRepository.GetByIdForUpdateAsync(request.OrderId, ct);
 
-        if (order.Status == OrderStatusEnum.Cancelled)
-        {
-            logger.LogWarning("Order status update failed: order {OrderId} is already cancelled", request.OrderId);
-            return Result.Failure(OrderErrors.AlreadyCancelled);
-        }
+            if (order is null)
+            {
+                logger.LogWarning("Order status update failed: order {OrderId} not found", request.OrderId);
+                return Result.Failure(OrderErrors.NotFoundById(request.OrderId));
+            }
 
-        if (!AllowedTransitions.TryGetValue(order.Status, out var expectedNext))
-        {
-            logger.LogWarning("Order status update failed: invalid transition from {CurrentStatus} to {RequestedStatus} for order {OrderId}",
-                order.Status, request.NewStatus, request.OrderId);
-            return Result.Failure(OrderErrors.InvalidStatusTransition(order.Status, request.NewStatus));
-        }
+            if (order.Status == OrderStatusEnum.Cancelled)
+            {
+                logger.LogWarning("Order status update failed: order {OrderId} is already cancelled", request.OrderId);
+                return Result.Failure(OrderErrors.AlreadyCancelled);
+            }
 
-        if (request.NewStatus != expectedNext)
-        {
-            logger.LogWarning("Order status update failed: invalid transition from {CurrentStatus} to {RequestedStatus} for order {OrderId}",
-                order.Status, request.NewStatus, request.OrderId);
-            return Result.Failure(OrderErrors.InvalidStatusTransition(order.Status, request.NewStatus));
-        }
+            if (!AllowedTransitions.TryGetValue(order.Status, out var expectedNext))
+            {
+                logger.LogWarning("Order status update failed: invalid transition from {CurrentStatus} to {RequestedStatus} for order {OrderId}",
+                    order.Status, request.NewStatus, request.OrderId);
+                return Result.Failure(OrderErrors.InvalidStatusTransition(order.Status, request.NewStatus));
+            }
 
-        var previousStatus = order.Status;
-        order.Status = request.NewStatus;
+            if (request.NewStatus != expectedNext)
+            {
+                logger.LogWarning("Order status update failed: invalid transition from {CurrentStatus} to {RequestedStatus} for order {OrderId}",
+                    order.Status, request.NewStatus, request.OrderId);
+                return Result.Failure(OrderErrors.InvalidStatusTransition(order.Status, request.NewStatus));
+            }
 
-        await unitOfWork.SaveChangesAsync(cancellationToken);
+            var previousStatus = order.Status;
+            order.Status = request.NewStatus;
 
-        cache.InvalidateReports();
+            cache.InvalidateReports();
 
-        logger.LogInformation("Order {OrderId} status updated from {PreviousStatus} to {NewStatus}",
-            request.OrderId, previousStatus, request.NewStatus);
+            logger.LogInformation("Order {OrderId} status updated from {PreviousStatus} to {NewStatus}",
+                request.OrderId, previousStatus, request.NewStatus);
 
-        return Result.Success();
+            return Result.Success();
+        }, cancellationToken);
     }
 }
