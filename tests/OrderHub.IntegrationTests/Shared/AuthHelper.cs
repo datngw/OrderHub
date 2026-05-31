@@ -46,15 +46,20 @@ public static class AuthHelper
             });
             registerResponse.EnsureSuccessStatusCode();
 
-            var auth = await registerResponse.Content.ReadFromJsonAsync<AuthResponse>();
-
             using var scope = fixture.Services.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<OrderHubDbContext>();
             var user = await db.Users.FirstAsync(u => u.Email == email);
             user.Role = UserRoleEnum.Admin;
             await db.SaveChangesAsync();
 
-            return auth!;
+            // Login again to get token with Admin role
+            var loginResponse = await client.PostAsJsonAsync("/api/v1/auth/login", new
+            {
+                Email = email,
+                Password = password
+            });
+            loginResponse.EnsureSuccessStatusCode();
+            return (await loginResponse.Content.ReadFromJsonAsync<AuthResponse>())!;
         }
 
         var response = await client.PostAsJsonAsync("/api/v1/auth/register", new

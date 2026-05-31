@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 using OrderHub.Domain.Orders;
 
 namespace OrderHub.Infrastructure.Persistence.Repositories;
@@ -48,42 +49,99 @@ public class OrderRepository(OrderHubDbContext context) : IOrderRepository
     public async Task<List<TopProductRevenue>> GetTopProductsByRevenueAsync(
         DateTime? from, DateTime? to, int top, CancellationToken ct)
     {
+        var fromDateUtc = from.HasValue
+            ? (from.Value.Kind == DateTimeKind.Utc ? from.Value : from.Value.ToUniversalTime())
+            : (DateTime?)null;
+        var toDateUtc = to.HasValue
+            ? (to.Value.Kind == DateTimeKind.Utc ? to.Value.AddDays(1) : to.Value.AddDays(1).ToUniversalTime())
+            : (DateTime?)null;
+
         var query = context.OrderItems
-            .Include(oi => oi.Product)
-            .Where(oi => !from.HasValue || oi.Order.CreatedAt >= from.Value)
-            .Where(oi => !to.HasValue || oi.Order.CreatedAt < to.Value.AddDays(1))
-            .Where(oi => oi.Order.Status != OrderStatusEnum.Cancelled)
-            .GroupBy(oi => new { oi.ProductId, oi.Product.Name })
-            .Select(g => new TopProductRevenue(
+            .AsNoTracking()
+            .Where(oi => oi.Order.Status != OrderStatusEnum.Cancelled);
+
+        if (fromDateUtc.HasValue)
+        {
+            query = query.Where(oi => oi.Order.CreatedAt >= fromDateUtc.Value);
+        }
+        if (toDateUtc.HasValue)
+        {
+            query = query.Where(oi => oi.Order.CreatedAt < toDateUtc.Value);
+        }
+
+        var flatQuery = query.Select(oi => new
+        {
+            oi.ProductId,
+            ProductName = oi.Product.Name,
+            oi.Quantity,
+            Revenue = oi.UnitPrice * oi.Quantity
+        });
+
+        var groupedQuery = flatQuery
+            .GroupBy(x => new { x.ProductId, x.ProductName })
+            .Select(g => new
+            {
                 g.Key.ProductId,
-                g.Key.Name,
-                g.Sum(oi => oi.Quantity),
-                g.Sum(oi => oi.UnitPrice * oi.Quantity)))
-            .OrderByDescending(x => x.TotalRevenue)
+                g.Key.ProductName,
+                TotalQuantity = g.Sum(x => x.Quantity),
+                TotalRevenue = g.Sum(x => x.Revenue)
+            })
+            .OrderByDescending(r => r.TotalRevenue)
             .Take(top);
 
-        return await query.AsNoTracking().ToListAsync(ct);
+        var data = await groupedQuery.ToListAsync(ct);
+
+        return data.Select(x => new TopProductRevenue(
+            x.ProductId,
+            x.ProductName,
+            x.TotalQuantity,
+            x.TotalRevenue
+        )).ToList();
     }
 
     public async Task<List<RevenueByDay>> GetRevenueByDayAsync(
         DateTime? from, DateTime? to, CancellationToken ct)
     {
-        var query = context.Orders
-            .Where(o => o.Status != OrderStatusEnum.Cancelled)
-            .Where(o => !from.HasValue || o.CreatedAt >= from.Value)
-            .Where(o => !to.HasValue || o.CreatedAt < to.Value.AddDays(1));
+        var fromDateUtc = from.HasValue
+            ? (from.Value.Kind == DateTimeKind.Utc ? from.Value : from.Value.ToUniversalTime())
+            : (DateTime?)null;
+        var toDateUtc = to.HasValue
+            ? (to.Value.Kind == DateTimeKind.Utc ? to.Value.AddDays(1) : to.Value.AddDays(1).ToUniversalTime())
+            : (DateTime?)null;
 
-        var result = await query
+        var query = context.Orders
             .AsNoTracking()
-            .GroupBy(o => o.CreatedAt.Date)
-            .Select(g => new RevenueByDay(
-                g.Key,
-                g.Count(),
-                g.Sum(o => o.TotalAmount)))
-            .OrderBy(x => x.Date)
+            .Where(o => o.Status != OrderStatusEnum.Cancelled);
+
+        if (fromDateUtc.HasValue)
+        {
+            query = query.Where(o => o.CreatedAt >= fromDateUtc.Value);
+        }
+        if (toDateUtc.HasValue)
+        {
+            query = query.Where(o => o.CreatedAt < toDateUtc.Value);
+        }
+
+        var data = await query
+            .GroupBy(o => new { o.CreatedAt.Year, o.CreatedAt.Month, o.CreatedAt.Day })
+            .Select(g => new
+            {
+                g.Key.Year,
+                g.Key.Month,
+                g.Key.Day,
+                OrderCount = g.Count(),
+                TotalRevenue = g.Sum(o => o.TotalAmount)
+            })
+            .OrderBy(x => x.Year)
+            .ThenBy(x => x.Month)
+            .ThenBy(x => x.Day)
             .ToListAsync(ct);
 
-        return result;
+        return data.Select(x => new RevenueByDay(
+            new DateTime(x.Year, x.Month, x.Day, 0, 0, 0, DateTimeKind.Utc),
+            x.OrderCount,
+            x.TotalRevenue
+        )).ToList();
     }
 
     public void Add(Order order) => context.Orders.Add(order);

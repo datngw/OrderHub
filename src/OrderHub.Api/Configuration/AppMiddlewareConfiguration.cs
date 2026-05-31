@@ -56,7 +56,10 @@ public static class AppMiddlewareConfiguration
         app.UseHttpsRedirection();
         app.UseHsts();
         app.UseResponseCompression();
-        app.UseRateLimiter();
+        if (!app.Environment.IsEnvironment("Testing"))
+        {
+            app.UseRateLimiter();
+        }
         app.UseRequestTimeouts();
         app.UseCors("Default");
     }
