@@ -31,11 +31,11 @@ flowchart TD
     end
 
     %% Dependency flows (Strictly inward-pointing)
-    API -->|Triggers CQRS Commands/Queries| Application
-    API -.->|Registers Types via DI| Infrastructure
-    Infrastructure -->|Implements Interfaces / Repositories| Application
-    Infrastructure -->|Maps DB Configurations to Domain Models| Domain
-    Application -->|Coordinates Domain Entities & Rules| Domain
+    API -- "Triggers CQRS Commands/Queries" --> Application
+    API -. "Registers Types via DI" .-> Infrastructure
+    Infrastructure -- "Implements Interfaces / Repositories" --> Application
+    Infrastructure -- "Maps DB Configurations to Domain Models" --> Domain
+    Application -- "Coordinates Domain Entities & Rules" --> Domain
 ```
 
 ### Key Rules of the Clean Architecture Strategy

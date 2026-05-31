@@ -144,13 +144,13 @@ flowchart TD
     end
 
     %% Dependency & Invocation flows
-    Endpoints -->| "Dispatches MediatR requests" | Behaviors
-    CQRS -->| "Queries / Persists Data" | RepoInterfaces
-    CQRS -->| "Generates Access/Refresh Tokens" | TokenService
-    Repos -.->| "Implements contracts" | RepoInterfaces
-    Repos -->| "Queries / Returns" | Entities
-    Entities -->| "Validation checks against" | Constraints
-    CQRS -->| "Yields static errors" | Errors
+    Endpoints -- "Dispatches MediatR requests" --> Behaviors
+    CQRS -- "Queries / Persists Data" --> RepoInterfaces
+    CQRS -- "Generates Access/Refresh Tokens" --> TokenService
+    Repos -. "Implements contracts" .-> RepoInterfaces
+    Repos -- "Queries / Returns" --> Entities
+    Entities -- "Validation checks against" --> Constraints
+    CQRS -- "Yields static errors" --> Errors
 ```
 
 ### 5.3.1 Domain Layer (`OrderHub.Domain`)

@@ -56,12 +56,12 @@ flowchart TD
     end
 
     %% Relationships
-    CustomerApp -->| "HTTPS / REST JSON<br/>(Customer Credentials)" | AuthFilter
-    AdminPortal -->| "HTTPS / REST JSON<br/>(Admin Credentials)" | AuthFilter
-    HealthProbes -->| "HTTP GET /health/*" | AuthFilter
+    CustomerApp -- "HTTPS / REST JSON<br/>(Customer Credentials)" --> AuthFilter
+    AdminPortal -- "HTTPS / REST JSON<br/>(Admin Credentials)" --> AuthFilter
+    HealthProbes -- "HTTP GET /health/*" --> AuthFilter
 
-    CQRS -->| "EF Core / Npgsql TCP" | Database
-    APILayer -->| "Serilog Sink HTTP/TCP" | SeqLogs
+    CQRS -- "EF Core / Npgsql TCP" --> Database
+    APILayer -- "Serilog Sink HTTP/TCP" --> SeqLogs
 ```
 
 ## 1.2 Business Goals
