@@ -6,27 +6,38 @@ description: Set up OrderHub for local development without Docker containers
 
 # Local Development Setup
 
-Run OrderHub locally for development and debugging without Docker.
+Follow this guide to set up, build, and run the OrderHub development environment directly on your local machine using the .NET SDK and user secrets.
 
 ## Prerequisites
 
-- [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0)
-- [PostgreSQL 16](https://www.postgresql.org/download/) (or use Docker for the database only)
-- An IDE: Visual Studio 2022, Rider, or VS Code with C# Dev Kit
+Before starting, install the following development tools:
+*   [.NET 8.0 SDK](https://dotnet.microsoft.com/download/dotnet/8.0)
+*   [PostgreSQL 16](https://www.postgresql.org/download/) (or Docker Desktop to spin up database-only containers)
+*   [dotnet-ef CLI tool](https://learn.microsoft.com/en-us/ef/core/cli/dotnet) (install globally using `dotnet tool install -g dotnet-ef`)
+*   An IDE: [Visual Studio 2022](https://visualstudio.microsoft.com/), [JetBrains Rider](https://www.jetbrains.com/rider/), or [VS Code](https://code.visualstudio.com/) with C# Dev Kit.
 
-## Step 1: Build
+---
+
+## Step 1: Build the Solution
+
+Restore dependencies and build the Solution file (`OrderHub.slnx`):
 
 ```bash
 dotnet build OrderHub.slnx
 ```
 
+---
+
 ## Step 2: Database Setup
 
-### Option A: PostgreSQL via Docker (recommended)
+Select one of the following setups for your PostgreSQL database:
+
+### Option A: PostgreSQL via Docker (Recommended)
+You can run a lightweight PostgreSQL database container in Docker, exposing port `5432`:
 
 ```bash
 docker run -d \
-  --name orderhub-db \
+  --name orderhub-db-dev \
   -e POSTGRES_DB=orderhub \
   -e POSTGRES_USER=orderhub \
   -e POSTGRES_PASSWORD=orderhub \
@@ -34,13 +45,14 @@ docker run -d \
   postgres:16-alpine
 ```
 
-### Option B: Local PostgreSQL
+### Option B: Local PostgreSQL Server
+Ensure PostgreSQL 16 is running locally, listening on port `5432`. Connect to your PostgreSQL server using an administration client (like pgAdmin or psql) and create an empty database named `orderhub`.
 
-Ensure PostgreSQL 16 is running on `localhost:5432` and create a database named `orderhub`.
+---
 
-## Step 3: Configure Connection String
+## Step 3: Configure User Secrets
 
-Using .NET User Secrets:
+To prevent database credentials from leaking into source files, inject the connection string at runtime using `.NET User Secrets` inside the API project:
 
 ```bash
 dotnet user-secrets set "ConnectionStrings:DefaultConnection" \
@@ -48,17 +60,23 @@ dotnet user-secrets set "ConnectionStrings:DefaultConnection" \
   --project src/OrderHub.Api
 ```
 
-Alternatively, set the environment variable:
+Alternatively, you can set the configuration as an environment variable in your shell:
+
+```powershell
+# PowerShell (Windows)
+$env:ConnectionStrings__DefaultConnection = "Host=localhost;Database=orderhub;Username=orderhub;Password=orderhub"
+```
 
 ```bash
-# PowerShell
-$env:ConnectionStrings__DefaultConnection = "Host=localhost;Database=orderhub;Username=orderhub;Password=orderhub"
-
-# Bash
+# Bash (macOS/Linux)
 export ConnectionStrings__DefaultConnection="Host=localhost;Database=orderhub;Username=orderhub;Password=orderhub"
 ```
 
-## Step 4: Apply Migrations
+---
+
+## Step 4: Apply Database Migrations
+
+Use the EF Core CLI to apply migrations to your database. This compiles the schema changes and applies them to your target PostgreSQL database:
 
 ```bash
 dotnet ef database update \
@@ -66,46 +84,45 @@ dotnet ef database update \
   --startup-project src/OrderHub.Api
 ```
 
-This creates the database schema and seeds initial data (1 admin + 1 customer + 100 products).
+### What happens on execution:
+1.  EF Core queries the target database and creates the schema tables (Users, Products, Orders, OrderItems, RefreshTokens).
+2.  Registers the `pg_trgm` PostgreSQL extension.
+3.  Executes the seeder, inserting the default admin account, customer account, and generating **10,000 product variants** in batched SQL statements.
 
-## Step 5: Run the API
+---
+
+## Step 5: Run the API Server
+
+Start the API project using the run command:
 
 ```bash
 dotnet run --project src/OrderHub.Api
 ```
 
-The API starts on `http://localhost:5000` by default.
+The Kestrel server launches and begins listening on `http://localhost:5000` (and `https://localhost:5001` if local certificates are configured).
 
-## Project Structure
-
-```
-OrderHub/
-├── src/
-│   ├── OrderHub.Domain/           # Entities, enums, interfaces
-│   ├── OrderHub.Application/      # Commands, queries, handlers, validators, DTOs
-│   ├── OrderHub.Infrastructure/   # EF Core, repositories, auth, Serilog config
-│   └── OrderHub.Api/              # Endpoints, middleware, Program.cs
-├── tests/
-│   ├── OrderHub.UnitTests/        # Handler and validator tests
-│   └── OrderHub.IntegrationTests/ # WebApplicationFactory + Testcontainers
-├── OrderHub.slnx
-└── docker-compose.yml
-```
-
-## Development Workflow
-
-1. **Add a feature** — Create Command/Query, Handler, Validator, DTOs, Endpoint
-2. **Run unit tests** — `dotnet test tests/OrderHub.UnitTests`
-3. **Run integration tests** — `dotnet test tests/OrderHub.IntegrationTests` (requires Docker)
-4. **Check API** — Open Scalar UI at `http://localhost:5000/scalar/v1`
-5. **View logs** — Console output shows structured Serilog logs
-
-## Hot Reload
-
-For rapid development, use `dotnet watch`:
+### Hot Reload Watch Mode
+For rapid development, run the API using watch mode:
 
 ```bash
 dotnet watch --project src/OrderHub.Api
 ```
+Any modifications made to C# source files will be dynamically compiled and hot-reloaded into the running process without requiring a manual server restart.
 
-This enables hot reload — code changes are applied without restarting the server.
+---
+
+## Directory Solution Structure
+
+```
+OrderHub/
+├── src/
+│   ├── OrderHub.Domain/           # Core Entities, Domain Errors, and Repository contracts
+│   ├── OrderHub.Application/      # CQRS commands/queries, handlers, caching, and behaviors
+│   ├── OrderHub.Infrastructure/   # DBContext, Repository implementations, JWT, and Serilog
+│   └── OrderHub.Api/              # Minimal API Endpoints, Middleware, and Program.cs
+├── tests/
+│   ├── OrderHub.UnitTests/        # Use-case handlers, validators, and HTML sanitization tests
+│   └── OrderHub.IntegrationTests/ # WebApplicationFactory & Testcontainers database integration
+├── OrderHub.slnx                  # Visual Studio XML-based Solution file
+└── docker-compose.yml             # Development container stack orchestration
+```

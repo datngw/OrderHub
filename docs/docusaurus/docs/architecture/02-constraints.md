@@ -28,7 +28,7 @@ Organizational constraints represent boundaries imposed by team structure, timel
 
 | Constraint | Details & Impact | Architectural Mitigation |
 |---|---|---|
-| **Team Size** | 1 to 3 developers managing the entire codebase. No dedicated database administrator (DBA) or infrastructure team. | **Keep it simple:** A modular monolith architecture was chosen over a distributed microservice setup. Backing services (PostgreSQL, Seq) run locally in Docker. |
+| **Team Size** | Solo developer managing the entire codebase. No dedicated database administrator (DBA) or infrastructure team. | **Keep it simple:** A monolithic architecture was chosen over a distributed microservice setup. Backing services (PostgreSQL, Seq) run locally in Docker. |
 | **Infrastructure Budget** | Minimum operational cost. Development must run smoothly on standard laptops. | **Resource Efficiency:** The backend runs in a single process, utilizing an in-process caching system (`IMemoryCache`) with custom concurrency controls (`CacheStampedeGuard`) to reduce memory and compute footprint. |
 | **Operational Lifecycle** | Fast deployment and migration are required. Staging environments must match production configurations. | **Autonomic Migrations:** EF Core migrations are executed programmatically at startup using `DatabaseMigrationHostedService`, eliminating manual database migration steps. |
 

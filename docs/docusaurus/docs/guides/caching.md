@@ -1,125 +1,139 @@
 ---
 sidebar_position: 3
 title: Caching Strategy
-description: Handler-level caching with the version-key pattern for prefix-based invalidation
+description: Handler-level caching with the version-key pattern and stampede protection
 ---
 
 # Caching Strategy
 
-## Overview
+OrderHub implements an in-process, handler-level caching strategy designed to optimize read latency, protect database resources, and prevent the **Thundering Herd (Cache Stampede)** problem under concurrent traffic spikes.
 
-OrderHub uses **handler-level caching** via `IMemoryCache` with a custom **version-key pattern** for prefix-based invalidation. This approach caches domain objects inside MediatR query handlers, making cached data reusable across any endpoint that calls the same handler.
+---
 
-## Version-Key Pattern
+## 1. Core Architectural Caching Choices
+
+1.  **Handler-Level Caching:** Caching logic is implemented inside MediatR query handlers in the Application layer, rather than at the HTTP endpoint level. This allows cached data to be reused across different endpoints (e.g., REST endpoints, background services, or inner pipelines).
+2.  **Version-Key Invalidation:** Since standard in-memory caches do not support tag-based invalidation, OrderHub uses a version-key pattern to invalidate cached list queries.
+3.  **Cache Stampede Guard:** When a high-traffic cache entry expires, concurrent requests are serialized using a Singleton guard to prevent database connection pool exhaustion.
+
+---
+
+## 2. Version-Key Invalidation Pattern
 
 ### How It Works
-
-Every cache key includes a version number:
-
+Every cache key includes a version token:
 ```
 {prefix}:v{version}:{parameters}
 ```
 
-| Step | Action |
-|------|--------|
-| **Read** | Generate cache key with current version → check IMemoryCache |
-| **Hit** | Return cached result directly (no database query) |
-| **Miss** | Query database → cache result with TTL → return |
-| **Mutation** | Reset the version number → old keys become orphaned → expire by TTL |
+*   **Read Path:** Generate the cache key using the current version token from the cache. Check the cache.
+*   **Cache Hit:** Return the cached data directly (no database query).
+*   **Cache Miss:** Query the database, write the result to the cache with a TTL (Time-To-Live), and return the data.
+*   **Mutation Path:** Delete the version token from the cache. The next read generates a new random version string, orphaning old cached entries and causing them to expire by their TTL.
 
-### CacheKeys Implementation
-
-The `CacheKeys` static class centralizes all cache keys and invalidation:
-
+### Key Retrieval in Code (`CacheKeys.cs`)
 ```csharp
 public static class CacheKeys
 {
-    private static int _productsVersion;
-    private static int _reportsVersion;
+    private const string ProductVersionKey = "products:version";
 
-    // Product list cache key (includes version + page params)
-    public static string ProductsList(int page, int pageSize, string? search,
-        string? category, decimal? minPrice, decimal? maxPrice,
-        string? sortBy, string sortOrder)
-        => $"products:v{_productsVersion}:p{page}:ps{pageSize}:s{search}:c{category}:min{minPrice}:max{maxPrice}:sort{sortBy}:{sortOrder}";
+    public static string GetProductVersion(this IMemoryCache cache) =>
+        cache.GetOrCreate(ProductVersionKey, entry =>
+        {
+            entry.SetPriority(CacheItemPriority.NeverRemove)
+                 .SetSize(1);
+            return Guid.NewGuid().ToString("N")[..8];
+        })!;
 
-    // Product by ID cache key
-    public static string ProductById(Guid id)
-        => $"products:v{_productsVersion}:id:{id}";
+    public static void InvalidateProducts(this IMemoryCache cache, Guid? productId = null)
+    {
+        if (productId.HasValue)
+            cache.Remove(Products.ById(productId.Value));
 
-    // Invalidate all product cache entries
-    public static void InvalidateProducts()
-        => Interlocked.Increment(ref _productsVersion);
-
-    // Invalidate all report cache entries
-    public static void InvalidateReports()
-        => Interlocked.Increment(ref _reportsVersion);
+        cache.Remove(ProductVersionKey);
+    }
 }
 ```
 
-### Why Not Tags?
+---
 
-`IMemoryCache` doesn't support tag-based invalidation (unlike Redis). The version-key pattern achieves the same effect: incrementing the version effectively invalidates all keys with that prefix because new reads will generate keys with the new version.
+## 3. Cache Stampede (Thundering Herd) Protection
 
-## Cache Policies
+When a high-traffic cache entry expires, multiple concurrent requests can attempt to query the database simultaneously, potentially degrading database performance.
 
-| Data | Cache Key Pattern | Sliding TTL | Absolute TTL | Invalidation Trigger |
-|------|------------------|-------------|-------------|---------------------|
-| **Product list** | `products:v{n}:{params}` | 30 seconds | 5 minutes | Any product mutation |
-| **Product by ID** | `products:v{n}:id:{id}` | 30 seconds | 10 minutes | Any product mutation |
-| **Top products report** | `reports:v{n}:top:{from}:{to}` | — | 3 minutes | Order or product mutation |
-| **Revenue by day** | `reports:v{n}:revenue:{from}:{to}` | — | 3 minutes | Order or product mutation |
-
-## Handler Integration
-
-Caching lives inside query handlers, not in endpoints:
+OrderHub resolves this using the **`CacheStampedeGuard`**:
 
 ```csharp
-public async Task<Result<PagedResult<ProductResponse>>> Handle(
-    GetProductsQuery request, CancellationToken cancellationToken)
+public sealed class CacheStampedeGuard
 {
-    var cacheKey = CacheKeys.ProductsList(
-        request.Page, request.PageSize, request.Search,
-        request.Category, request.MinPrice, request.MaxPrice,
-        request.SortBy, request.SortOrder);
+    private readonly ConcurrentDictionary<string, SemaphoreSlim> _locks = new();
 
-    if (_cache.TryGetValue(cacheKey, out PagedResult<ProductResponse>? cached))
-        return Result.Success(cached!);
+    public async Task<T?> GetOrCreateAsync<T>(
+        IMemoryCache cache,
+        string key,
+        Func<ICacheEntry, Task<T?>> factory,
+        Action<ICacheEntry>? configure = null) where T : class
+    {
+        // 1. Check cache first without lock (Fast Path)
+        if (cache.TryGetValue(key, out T? cached))
+            return cached;
 
-    var result = await _productRepository.GetAllAsync(...);
-    var response = result.Adapt<PagedResult<ProductResponse>>();
+        // 2. Lock acquisition per cache key
+        var semaphore = _locks.GetOrAdd(key, _ => new SemaphoreSlim(1, 1));
+        await semaphore.WaitAsync();
+        try
+        {
+            // 3. Double-check cache after acquiring lock
+            if (cache.TryGetValue(key, out cached))
+                return cached;
 
-    var options = new MemoryCacheEntryOptions()
-        .SetSlidingExpiration(TimeSpan.FromSeconds(30))
-        .SetAbsoluteExpiration(TimeSpan.FromMinutes(5))
-        .SetSize(1);
+            // 4. Fetch from database and populate cache (Slow Path)
+            var result = await cache.GetOrCreateAsync(key, async entry =>
+            {
+                configure?.Invoke(entry);
+                return await factory(entry);
+            });
 
-    _cache.Set(cacheKey, response, options);
+            return result;
+        }
+        finally
+        {
+            semaphore.Release();
 
-    return Result.Success(response);
+            // 5. Cleanup semaphore from dictionary to prevent memory leaks
+            if (semaphore.CurrentCount == 1)
+                _locks.TryRemove(key, out _);
+        }
+    }
 }
 ```
 
-## Invalidation Flow
+---
 
-When a mutation occurs (create product, create order, etc.), the handler calls:
+## 4. Cache Policies
+
+OrderHub enforces the following caching rules:
+
+| Cache Key Group | Cache Key Format | Sliding Expiration | Absolute Expiration | Invalidation Trigger |
+|---|---|:---:|:---:|---|
+| **Product List** | `products:list:v{version}:{page}:{size}:{filters}` | 30 seconds | 5 minutes | Any product mutation (Create, Update, Delete). |
+| **Product Detail** | `products:byid:{id}` | 30 seconds | 10 minutes | Update or deletion of that specific product ID. |
+| **Top Products Report**| `reports:top-products:v{version}:{from}:{to}:{count}`| — | 3 minutes | Creation/cancellation of an order or product mutation. |
+| **Daily Revenue Report**| `reports:revenue-by-day:v{version}:{from}:{to}` | — | 3 minutes | Creation/cancellation of an order or product mutation. |
+
+---
+
+## 5. Invalidation Flow Example
+
+When a Customer cancels an order, the `CancelOrderCommandHandler` invalidates the cached products and reports lists:
 
 ```csharp
-CacheKeys.InvalidateProducts();   // Resets product version
-CacheKeys.InvalidateReports();    // Resets report version
+// Commit database changes
+await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+// Invalidate caches
+_cache.InvalidateProducts();
+_cache.InvalidateReports();
 ```
 
-This is an **atomic operation** using `Interlocked.Increment`, ensuring thread safety without locks.
-
-## Limitations and Future
-
-| Current | Future |
-|---------|--------|
-| `IMemoryCache` (in-process) | Redis or HybridCache (.NET 9+) for multi-instance |
-| Version-key pattern | Tag-based invalidation (native in Redis) |
-| Single API instance | Multiple instances sharing a distributed cache |
-| Size limit: 10K entries | Configurable based on available memory |
-
-:::info
-The current approach is optimal for a single-instance deployment. When scaling to multiple instances, migrate to a distributed cache (Redis) or the upcoming .NET 9 HybridCache.
-:::
+*   **Result:** The version key `products:version` is removed. The next client request to `GET /api/v1/products` generates a new version token, causing subsequent requests to query the database and cache the updated results.

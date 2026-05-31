@@ -4,93 +4,58 @@ title: Health Checks
 description: Liveness and readiness probe endpoints
 ---
 
-# Health Checks
+# Health Checks API
 
-## Liveness Probe
-
-Check if the API process is alive and responding.
-
-```
-GET /health/live
-```
-
-**Auth:** None
-
-### Response (200 OK)
-
-```json
-{
-  "status": "Healthy",
-  "checks": [
-    {
-      "name": "self",
-      "status": "Healthy",
-      "duration": "00:00:00.0001234"
-    }
-  ]
-}
-```
-
-Use this endpoint for container restart policies — if it fails, the process is unresponsive.
+OrderHub exposes liveness and readiness health probes to facilitate container orchestrator health checking (e.g., Docker container health, Kubernetes, or automated uptime monitoring services).
 
 ---
 
-## Readiness Probe
+## 1. Liveness Probe
 
-Check if the API is ready to serve requests, including database connectivity.
+Determines if the API container process is alive and responding to HTTP requests.
 
+```http
+GET /health/live
 ```
+
+*   **Authentication:** None (Public)
+*   **Response Format:** Plain Text
+
+### Response (200 OK - Healthy)
+Returned when the API container process is running:
+```http
+Healthy
+```
+
+:::tip Container Orchestration
+Use the `/health/live` endpoint in Docker container `HEALTHCHECK` definitions or Kubernetes `livenessProbe` specifications. If this endpoint returns a failure (non-2xx) or times out, the container orchestrator will automatically restart the container.
+:::
+
+---
+
+## 2. Readiness Probe
+
+Checks if the API process is ready to serve traffic, verifying connectivity to backing services (PostgreSQL database).
+
+```http
 GET /health/ready
 ```
 
-**Auth:** None
+*   **Authentication:** None (Public)
+*   **Response Format:** Plain Text
 
-### Response (200 OK)
-
-```json
-{
-  "status": "Healthy",
-  "checks": [
-    {
-      "name": "self",
-      "status": "Healthy",
-      "duration": "00:00:00.0001234"
-    },
-    {
-      "name": "postgresql",
-      "status": "Healthy",
-      "duration": "00:00:00.0054321",
-      "data": {
-        "connectionString": "Host=orderhub-db;Database=orderhub;..."
-      }
-    }
-  ]
-}
+### Response (200 OK - Healthy)
+Returned when the API is running and successfully connected to the PostgreSQL database:
+```http
+Healthy
 ```
 
-### Response (503 Service Unavailable)
-
-If the database is unreachable:
-
-```json
-{
-  "status": "Unhealthy",
-  "checks": [
-    {
-      "name": "self",
-      "status": "Healthy",
-      "duration": "00:00:00.0001234"
-    },
-    {
-      "name": "postgresql",
-      "status": "Unhealthy",
-      "duration": "00:00:05.0012345",
-      "exception": "Npgsql.NpgsqlException: Failed to connect..."
-    }
-  ]
-}
+### Response (503 Service Unavailable - Unhealthy)
+Returned if the database connection fails, is misconfigured, or times out:
+```http
+Unhealthy
 ```
 
-:::tip
-Use `/health/ready` for Kubernetes readiness probes or Docker health checks to prevent traffic from reaching the API before the database is ready.
+:::warning Readiness vs Liveness
+Use `/health/ready` for Kubernetes `readinessProbe` routing rules. If this endpoint returns `Unhealthy` (HTTP 503), the load balancer stops routing traffic to this container until the database connection recovers. Do **not** use the readiness probe for liveness checks, or transient database outages could cause cascading container restarts.
 :::

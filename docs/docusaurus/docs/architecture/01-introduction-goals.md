@@ -10,7 +10,7 @@ description: What OrderHub is, why it exists, and what quality goals drive its a
 
 **OrderHub** serves as the central, high-concurrency order management engine for an enterprise e-commerce platform. It provides a robust, secure, and production-ready RESTful backend API designed to handle the critical components of the e-commerce transactional pipeline.
 
-The system is architected as a **modular monolith** following the principles of **Clean Architecture** and **Domain-Driven Design (DDD)**. By isolating core business logic from database frameworks, web APIs, and authentication mechanisms, OrderHub guarantees high testability, maintainability, and clean separation of concerns.
+The system is architected as a monolithic Web API following the principles of **Clean Architecture**. By isolating core business logic from database frameworks, web APIs, and authentication mechanisms, OrderHub guarantees high testability, maintainability, and clean separation of concerns.
 
 Key capabilities of OrderHub include:
 *   **Product Catalog Management:** Comprehensive CRUD operations, paginated catalog queries, and soft-delete features, optimized with PostgreSQL database indexing and local in-memory caching.

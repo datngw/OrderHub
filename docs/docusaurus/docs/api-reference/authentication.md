@@ -1,45 +1,50 @@
 ---
 sidebar_position: 2
 title: Authentication
-description: Auth endpoints for registration, login, token refresh, and logout
+description: Endpoints for user registration, login, token refresh, and logout
 ---
 
-# Authentication
+# Authentication API
 
-## Register
+Authentication endpoints allow clients to manage user accounts, log in to obtain JWT access and refresh tokens, rotate expired tokens, and log out.
 
-Create a new customer account.
+---
 
-```
+## 1. Register Account
+
+Creates a new user account with the `Customer` role and immediately logs the user in, returning active tokens.
+
+```http
 POST /api/v1/auth/register
 ```
 
-**Auth:** None
+*   **Authentication:** None (Public)
+*   **Rate Limit:** 3 requests per minute per IP (`auth-register` policy).
 
-### Request
-
+### Request Body (JSON)
 ```json
 {
-  "email": "user@example.com",
-  "password": "MyPass@123",
+  "email": "customer@orderhub.com",
+  "password": "User@12345",
   "fullName": "John Doe"
 }
 ```
 
-### Validation Rules
+### Input Validation Rules
 
-| Field | Rules |
-|-------|-------|
-| Email | Required, valid email format |
-| Password | Required, min 8 chars, must contain: uppercase, lowercase, digit, special character |
-| FullName | Required, min 2 chars, max 200 chars |
+| Property | Required | Type | Rules & Constraints |
+|---|:---:|:---:|---|
+| **`email`** | Yes | string | Must be a valid email format. Max 256 characters. Must be unique in the database. |
+| **`password`** | Yes | string | Minimum 8 characters. Must contain at least: one uppercase letter `[A-Z]`, one lowercase letter `[a-z]`, one digit `[0-9]`, and one non-alphanumeric character. |
+| **`fullName`** | Yes | string | Must not be empty. Max 200 characters. |
 
 ### Response (201 Created)
-
+Returns a payload of type `AuthResponse` containing credentials:
 ```json
 {
-  "userId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
-  "email": "user@example.com",
+  "accessToken": "eyJhbGciOiJIUzI1NiIsIn...",
+  "refreshToken": "7c5e2d6b8f9a0c1d2e3f4a5b6c7d8e9f",
+  "email": "customer@orderhub.com",
   "fullName": "John Doe",
   "role": "Customer"
 }
@@ -47,99 +52,97 @@ POST /api/v1/auth/register
 
 ---
 
-## Login
+## 2. Login
 
-Authenticate and receive JWT access + refresh tokens.
+Authenticates user credentials against the database. On success, issues a stateless JWT access token and a database-backed refresh token.
 
-```
+```http
 POST /api/v1/auth/login
 ```
 
-**Auth:** None
+*   **Authentication:** None (Public)
+*   **Rate Limit:** 5 requests per minute per IP (`auth-login` policy).
 
-### Request
-
+### Request Body (JSON)
 ```json
 {
-  "email": "user@example.com",
-  "password": "MyPass@123"
+  "email": "customer@orderhub.com",
+  "password": "User@12345"
 }
 ```
 
 ### Response (200 OK)
-
+Returns a payload of type `AuthResponse` containing active tokens and user profile properties:
 ```json
 {
-  "accessToken": "eyJhbGciOiJIUzI1NiIs...",
-  "refreshToken": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
-  "tokenType": "Bearer",
-  "expiresIn": 900
+  "accessToken": "eyJhbGciOiJIUzI1NiIsIn...",
+  "refreshToken": "7c5e2d6b8f9a0c1d2e3f4a5b6c7d8e9f",
+  "email": "customer@orderhub.com",
+  "fullName": "John Doe",
+  "role": "Customer"
 }
 ```
 
-:::info
-Access tokens expire in **15 minutes**. Refresh tokens expire in **7 days**.
+:::info Token Lifetimes
+*   **Access Token:** Valid for **15 minutes** (configured in JWT properties). Contains user ID (`sub`), email, and role claims.
+*   **Refresh Token:** Valid for **7 days** (configured in database storage limits).
 :::
 
 ---
 
-## Refresh Token
+## 3. Refresh Token
 
-Get a new access token using a valid refresh token.
+Rotates an expired JWT access token using a valid, non-expired refresh token.
 
-```
+```http
 POST /api/v1/auth/refresh
 ```
 
-**Auth:** None
+*   **Authentication:** None (Public)
+*   **Rate Limit:** 10 requests per minute per IP (`auth-refresh` policy).
 
-### Request
-
+### Request Body (JSON)
 ```json
 {
-  "refreshToken": "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+  "refreshToken": "7c5e2d6b8f9a0c1d2e3f4a5b6c7d8e9f"
 }
 ```
 
 ### Response (200 OK)
-
+Returns a rotated access token and a brand new refresh token:
 ```json
 {
-  "accessToken": "eyJhbGciOiJIUzI1NiIs...",
-  "refreshToken": "new-refresh-token-uuid",
-  "tokenType": "Bearer",
-  "expiresIn": 900
+  "accessToken": "eyJhbGciOiJIUzI1NiIsIn...",
+  "refreshToken": "f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3",
+  "email": "customer@orderhub.com",
+  "fullName": "John Doe",
+  "role": "Customer"
 }
 ```
 
-:::warning
-The old refresh token is revoked when a new one is issued. You must use the new refresh token for subsequent refreshes.
+:::warning Refresh Token Rotation (RTR)
+OrderHub implements strict **Refresh Token Rotation**. When a new access token is requested, the old refresh token is revoked immediately. A single-use new refresh token is issued and returned. Clients must discard the old refresh token and store the new token for future requests.
 :::
 
 ---
 
-## Logout
+## 4. Logout
 
-Revoke the current refresh token.
+Revokes the specified refresh token, ending the active session and preventing further access token refreshes.
 
-```
+```http
 POST /api/v1/auth/logout
 ```
 
-**Auth:** Bearer token required
+*   **Authentication:** Required (Requires a valid JWT in the `Authorization` header)
+*   **Rate Limit:** 60 requests per minute per user (`products` rate limiting policy applied to standard authorized requests).
 
-### Request
-
+### Request Body (JSON)
 ```json
 {
-  "refreshToken": "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+  "refreshToken": "f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3"
 }
 ```
 
-### Response (200 OK)
-
-```json
-{
-  "message": "Logged out successfully"
-}
-```
+### Response (204 No Content)
+Returns an empty response indicating success.

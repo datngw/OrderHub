@@ -1,203 +1,201 @@
 ---
 sidebar_position: 4
 title: Orders
-description: Order management endpoints — create, view, update status, cancel
+description: Order checkout, history tracking, status management, and cancellation APIs
 ---
 
-# Orders
+# Orders API
 
-## Create Order
+The orders API handles checkout processing, order history lookups, administrative order lifecycle transitions, and order cancellations.
 
-Create a new order with atomic stock deduction. The system calculates the total from current product prices and captures a price snapshot per item.
+---
 
-```
+## 1. Create Order (Checkout)
+
+Submits a new order for checkout. The system validates inventory levels and deducts stock atomically in a single database transaction.
+
+```http
 POST /api/v1/orders
 ```
 
-**Auth:** Customer+ (any authenticated user)
+*   **Authentication:** Required (`Customer` or `Admin` role)
+*   **Rate Limit:** 30 requests per minute per IP or User ID (`orders` policy).
+*   **Concurrency Control:** Employs database-level **Pessimistic Locking** (`SELECT ... FOR UPDATE` locks on the product rows). Under concurrent purchase attempts, transactions queue up and execute sequentially, completely preventing inventory overselling.
+*   **Cache Invalidation:** Instantly increments the report cache version key, orphaning all admin analytics caches.
 
-### Request
-
+### Request Body (JSON)
 ```json
 {
   "items": [
     {
-      "productId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      "productId": "e2a3b4c5-1234-5678-abcd-1e2f3a4b5c6d",
       "quantity": 2
-    },
-    {
-      "productId": "f0e1d2c3-b4a5-6789-0abc-def123456789",
-      "quantity": 1
     }
   ]
 }
 ```
 
-### Validation Rules
+### Input Validation Rules
 
-| Field | Rules |
-|-------|-------|
-| Items | Required, at least 1 item |
-| ProductId | Required, valid GUID, product must exist and be active |
-| Quantity | Required, > 0, must not exceed available stock |
-
-### Processing
-
-1. Begin database transaction
-2. Lock all requested product rows (`SELECT ... FOR UPDATE`)
-3. Validate stock availability for all items
-4. Calculate `TotalAmount` from current product prices
-5. Create Order + OrderItems (with `UnitPrice` snapshot)
-6. Deduct stock from each product
-7. Commit transaction
-8. Invalidate product and report caches
-9. Return the created order
+| Property | Required | Type | Rules & Constraints |
+|---|:---:|:---:|---|
+| **`items`** | Yes | array | Must contain at least 1 item line. |
+| **`productId`** | Yes | guid | Must match an existing, active product catalog item. |
+| **`quantity`** | Yes | int | Must be strictly greater than 0. Must not exceed available stock. |
 
 ### Response (201 Created)
-
+Returns the created order details payload. The `Location` response header points to the order detail endpoint.
 ```json
 {
-  "id": "order-guid",
-  "userId": "user-guid",
+  "id": "b1b2b3b4-1234-5678-abcd-9e2f3a4b5c6d",
+  "userId": "d5e6f7a8-1234-5678-abcd-1e2f3a4b5c6d",
   "status": "Pending",
-  "totalAmount": 379.97,
-  "createdAt": "2025-06-15T14:30:00Z",
+  "totalAmount": 2399.98,
   "items": [
     {
-      "productId": "a1b2c3d4-...",
-      "productName": "Wireless Headphones",
+      "id": "c1c2c3c4-1234-5678-abcd-1e2f3a4b5c6d",
+      "productId": "e2a3b4c5-1234-5678-abcd-1e2f3a4b5c6d",
+      "productName": "iPhone 15 Pro Max",
       "quantity": 2,
-      "unitPrice": 149.99
-    },
-    {
-      "productId": "f0e1d2c3-...",
-      "productName": "Bluetooth Speaker",
-      "quantity": 1,
-      "unitPrice": 79.99
+      "unitPrice": 1199.99,
+      "subtotal": 2399.98
     }
-  ]
+  ],
+  "createdAt": "2026-06-01T01:30:00Z",
+  "updatedAt": null
 }
 ```
-
-### Error (409 Conflict)
-
-```json
-{
-  "type": "...",
-  "title": "Business rule violation",
-  "status": 409,
-  "errors": {
-    "Stock": ["Insufficient stock for product 'Widget'. Available: 3, Requested: 5"]
-  }
-}
-```
-
-:::warning
-This endpoint uses **pessimistic locking**. Under high contention, requests may wait for locks to release. Verified: 20 concurrent requests / stock=5 → exactly 5 succeed.
-:::
 
 ---
 
-## Get My Orders
+## 2. Get My Orders
 
-View the authenticated user's order history, paginated.
+Retrieves a paginated list of historical orders placed by the currently authenticated customer.
 
-```
+```http
 GET /api/v1/orders/me
 ```
 
-**Auth:** Customer+
+*   **Authentication:** Required (`Customer` or `Admin` role)
 
 ### Query Parameters
 
 | Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `page` | int | 1 | Page number |
-| `pageSize` | int | 10 | Items per page |
+|---|:---:|:---:|---|
+| **`page`** | int | `1` | The 1-based page index to retrieve. |
+| **`pageSize`** | int | `20` | The number of orders to return per page. |
 
-### Response (200 OK)
-
-Returns `PagedResult<OrderResponse>` with orders sorted by `createdAt` descending.
+### Response (200 OK - PagedResult)
+Returns a `PagedResult<OrderResponse>` wrapper sorted by creation timestamp in descending order:
+```json
+{
+  "items": [
+    {
+      "id": "b1b2b3b4-1234-5678-abcd-9e2f3a4b5c6d",
+      "userId": "d5e6f7a8-1234-5678-abcd-1e2f3a4b5c6d",
+      "status": "Pending",
+      "totalAmount": 2399.98,
+      "items": [
+        {
+          "id": "c1c2c3c4-1234-5678-abcd-1e2f3a4b5c6d",
+          "productId": "e2a3b4c5-1234-5678-abcd-1e2f3a4b5c6d",
+          "productName": "iPhone 15 Pro Max",
+          "quantity": 2,
+          "unitPrice": 1199.99,
+          "subtotal": 2399.98
+        }
+      ],
+      "createdAt": "2026-06-01T01:30:00Z",
+      "updatedAt": null
+    }
+  ],
+  "totalCount": 1,
+  "page": 1,
+  "pageSize": 20,
+  "totalPages": 1
+}
+```
 
 ---
 
-## Get Order by ID
+## 3. Get Order by ID
 
-View a single order's details.
+Retrieves details for a specific order by its unique ID.
 
-```
+```http
 GET /api/v1/orders/{id}
 ```
 
-**Auth:** Customer+ (owner or Admin only)
+*   **Authentication:** Required (`Customer` or `Admin` role)
 
-### Authorization
+### Path Parameters
+*   `id` (guid, required): The unique identifier of the target order.
 
-- **Customer** can only view their own orders
-- **Admin** can view any order
-- Returns 403 if a customer attempts to view another user's order
+### Authorization Rules
+*   **Customer Role:** Can only view orders they placed. Attempting to view another user's order results in an **HTTP 403 Forbidden** error.
+*   **Admin Role:** Authorized to retrieve details for any order in the system.
 
 ### Response (200 OK)
-
-Returns the full order with items and price snapshots.
+Returns the full `OrderResponse` object matching the schema shown in section 1.
 
 ---
 
-## Update Order Status
+## 4. Update Order Status
 
-Transition an order's status (Admin only).
+Updates the processing stage of an order (Admin only).
 
-```
+```http
 PUT /api/v1/orders/{id}/status
 ```
 
-**Auth:** Admin
+*   **Authentication:** Required (`Admin` role)
+*   **Cache Invalidation:** Increments the report cache version key.
 
-### Request
+### Path Parameters
+*   `id` (guid, required): The unique identifier of the order.
 
+### Request Body (JSON)
 ```json
 {
   "status": "Confirmed"
 }
 ```
 
-### Valid Transitions
+### Order Status Lifecycle Flow
+Order status transitions are strictly linear and checked sequentially inside a transaction. Backward skips or non-sequential updates are rejected:
 
 ```
-Pending → Confirmed → Shipped → Delivered
+Pending ──> Confirmed ──> Shipped ──> Delivered
 ```
 
-| Transition | Allowed |
-|-----------|---------|
-| Pending → Confirmed | ✅ |
-| Confirmed → Shipped | ✅ |
-| Shipped → Delivered | ✅ |
-| Any → Cancelled | ❌ (use cancel endpoint) |
-| Skipping steps | ❌ |
-| Backward transitions | ❌ |
+*   **`Pending` ──> `Confirmed`**: Transitions the order from draft to locked.
+*   **`Confirmed` ──> `Shipped`**: Marks items as handed over to carrier.
+*   **`Shipped` ──> `Delivered`**: Finalized delivery.
+*   **`Cancelled`**: This endpoint cannot be used to cancel an order (use the dedicated cancel endpoint instead).
 
-### Response (200 OK)
-
-Returns the updated order with new status.
+### Response (204 No Content)
+Returns an empty response indicating success.
 
 ---
 
-## Cancel Order
+## 5. Cancel Order
 
-Cancel a pending order and restore stock.
+Cancels a pending order, reverting the status and restoring product inventory stock (Owner or Admin).
 
-```
+```http
 POST /api/v1/orders/{id}/cancel
 ```
 
-**Auth:** Customer+ (owner or Admin)
+*   **Authentication:** Required (`Customer` or `Admin` role)
+*   **Ownership Check:** Customers can only cancel their own orders. Admins can cancel any order.
+*   **Cache Invalidation:** Increments product catalog and admin reports cache version keys.
 
-### Rules
+### Path Parameters
+*   `id` (guid, required): The unique identifier of the order.
 
-- Only orders with status **Pending** can be cancelled
-- Stock is restored for all items in the same transaction
-- Product and report caches are invalidated
+### Business Rules & Constraints
+*   An order can **only be cancelled if its current status is `Pending`**. Once an order has been transition-updated to `Confirmed` or beyond, cancellation is blocked and returns an **HTTP 400 Bad Request** error.
+*   Upon successful cancellation, all purchased item stock quantities are restored atomically to the database inventory in a single transaction.
 
-### Response (200 OK)
-
-Returns the order with status `Cancelled`.
+### Response (204 No Content)
+Returns an empty response indicating success.
