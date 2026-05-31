@@ -21,16 +21,10 @@ public sealed class DeleteProductCommandHandler(
         var product = await productRepository.GetByIdAsync(request.Id, cancellationToken);
 
         if (product is null)
-        {
-            logger.LogWarning("Product deletion failed: product {ProductId} not found", request.Id);
             return Result.Failure(ProductErrors.NotFoundById(request.Id));
-        }
 
         if (!product.IsActive)
-        {
-            logger.LogInformation("Product {ProductId} was already inactive", request.Id);
             return Result.Success();
-        }
 
         product.IsActive = false;
 

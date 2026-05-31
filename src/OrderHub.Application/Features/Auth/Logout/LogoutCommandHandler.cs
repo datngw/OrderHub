@@ -18,16 +18,10 @@ public sealed class LogoutCommandHandler(
         var token = await refreshTokenRepository.GetByTokenAsync(request.RefreshToken, cancellationToken);
 
         if (token is null)
-        {
-            logger.LogWarning("Logout failed: refresh token not found");
             return Result.Failure(AuthErrors.InvalidRefreshToken);
-        }
 
         if (token.IsRevoked)
-        {
-            logger.LogInformation("Logout: token was already revoked");
             return Result.Success();
-        }
 
         token.Revoke();
         await unitOfWork.SaveChangesAsync(cancellationToken);

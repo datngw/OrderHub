@@ -28,10 +28,7 @@ public sealed class RegisterCommandHandler(
     public async Task<Result<AuthResponse>> Handle(RegisterCommand request, CancellationToken cancellationToken)
     {
         if (await userRepository.ExistsByEmailAsync(request.Email.ToLowerInvariant(), cancellationToken))
-        {
-            logger.LogWarning("Registration failed: email already exists for {Email}", request.Email);
             return Result<AuthResponse>.Failure(AuthErrors.EmailAlreadyExists);
-        }
 
         var user = new User
         {
@@ -55,7 +52,6 @@ public sealed class RegisterCommandHandler(
         }
         catch (DbUpdateException)
         {
-            logger.LogWarning("Registration conflict on duplicate email: {Email}", request.Email);
             return Result<AuthResponse>.Failure(AuthErrors.EmailAlreadyExists);
         }
 

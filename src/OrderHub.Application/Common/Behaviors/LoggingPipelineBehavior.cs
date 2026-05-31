@@ -27,16 +27,25 @@ public sealed class LoggingPipelineBehavior<TRequest, TResponse>(
                 logger.LogInformation("Completed {RequestName} in {ElapsedMs}ms", requestName, stopwatch.ElapsedMilliseconds);
                 return response;
             }
-            catch (ValidationException ex)
+            catch (ValidationException)
             {
                 stopwatch.Stop();
-                logger.LogWarning(ex, "Validation failed for {RequestName} after {ElapsedMs}ms", requestName, stopwatch.ElapsedMilliseconds);
+                logger.LogWarning("Validation failed for {RequestName} after {ElapsedMs}ms",
+                    requestName, stopwatch.ElapsedMilliseconds);
+                throw;
+            }
+            catch (AppException ex)
+            {
+                stopwatch.Stop();
+                logger.LogWarning("Request {RequestName} failed with business error: {Code} - {Description} after {ElapsedMs}ms",
+                    requestName, ex.Error.Code, ex.Error.Description, stopwatch.ElapsedMilliseconds);
                 throw;
             }
             catch (Exception ex)
             {
                 stopwatch.Stop();
-                logger.LogError(ex, "Failed {RequestName} after {ElapsedMs}ms", requestName, stopwatch.ElapsedMilliseconds);
+                logger.LogError(ex, "Unhandled exception in {RequestName} after {ElapsedMs}ms",
+                    requestName, stopwatch.ElapsedMilliseconds);
                 throw;
             }
         }

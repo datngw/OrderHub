@@ -23,10 +23,7 @@ public sealed class UpdateProductCommandHandler(
         var product = await productRepository.GetByIdAsync(request.Id, cancellationToken);
 
         if (product is null)
-        {
-            logger.LogWarning("Product update failed: product {ProductId} not found", request.Id);
             return Result<ProductResponse>.Failure(ProductErrors.NotFoundById(request.Id));
-        }
 
         request.Adapt(product);
 

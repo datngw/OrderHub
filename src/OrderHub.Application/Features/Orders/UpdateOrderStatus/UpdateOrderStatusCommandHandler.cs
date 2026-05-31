@@ -30,30 +30,16 @@ public sealed class UpdateOrderStatusCommandHandler(
             var order = await orderRepository.GetByIdForUpdateAsync(request.OrderId, ct);
 
             if (order is null)
-            {
-                logger.LogWarning("Order status update failed: order {OrderId} not found", request.OrderId);
                 return Result.Failure(OrderErrors.NotFoundById(request.OrderId));
-            }
 
             if (order.Status == OrderStatusEnum.Cancelled)
-            {
-                logger.LogWarning("Order status update failed: order {OrderId} is already cancelled", request.OrderId);
                 return Result.Failure(OrderErrors.AlreadyCancelled);
-            }
 
             if (!AllowedTransitions.TryGetValue(order.Status, out var expectedNext))
-            {
-                logger.LogWarning("Order status update failed: invalid transition from {CurrentStatus} to {RequestedStatus} for order {OrderId}",
-                    order.Status, request.NewStatus, request.OrderId);
                 return Result.Failure(OrderErrors.InvalidStatusTransition(order.Status, request.NewStatus));
-            }
 
             if (request.NewStatus != expectedNext)
-            {
-                logger.LogWarning("Order status update failed: invalid transition from {CurrentStatus} to {RequestedStatus} for order {OrderId}",
-                    order.Status, request.NewStatus, request.OrderId);
                 return Result.Failure(OrderErrors.InvalidStatusTransition(order.Status, request.NewStatus));
-            }
 
             var previousStatus = order.Status;
             order.Status = request.NewStatus;

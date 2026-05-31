@@ -20,10 +20,7 @@ public sealed class GetOrderByIdQueryHandler(
         var order = await orderRepository.GetByIdAsync(request.OrderId, cancellationToken);
 
         if (order is null)
-        {
-            logger.LogInformation("Order lookup: order {OrderId} not found", request.OrderId);
             return Result<OrderResponse>.Failure(OrderErrors.NotFoundById(request.OrderId));
-        }
 
         if (!userContext.IsAdmin && order.UserId != userContext.UserId)
         {

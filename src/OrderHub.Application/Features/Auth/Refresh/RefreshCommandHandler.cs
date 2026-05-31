@@ -27,10 +27,7 @@ public sealed class RefreshCommandHandler(
         var existingToken = await refreshTokenRepository.GetByTokenWithUserAsync(request.Token, cancellationToken);
 
         if (existingToken is null)
-        {
-            logger.LogWarning("Token refresh failed: refresh token not found");
             return Result<AuthResponse>.Failure(AuthErrors.InvalidRefreshToken);
-        }
 
         var now = clock.UtcNow;
 
@@ -43,10 +40,7 @@ public sealed class RefreshCommandHandler(
         }
 
         if (existingToken.IsExpired(now))
-        {
-            logger.LogWarning("Token refresh failed: token expired for user {UserId}", existingToken.UserId);
             return Result<AuthResponse>.Failure(AuthErrors.RefreshTokenExpired);
-        }
 
         var newRefreshToken = RefreshToken.Create(
             tokenService.GenerateRefreshToken(),

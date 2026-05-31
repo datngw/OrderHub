@@ -27,10 +27,7 @@ public sealed class CancelOrderCommandHandler(
             var order = await orderRepository.GetByIdForUpdateAsync(request.OrderId, ct);
 
             if (order is null)
-            {
-                logger.LogWarning("Order cancellation failed: order {OrderId} not found", request.OrderId);
                 return Result.Failure(OrderErrors.NotFoundById(request.OrderId));
-            }
 
             if (!userContext.IsAdmin && order.UserId != userContext.UserId)
             {
@@ -40,17 +37,10 @@ public sealed class CancelOrderCommandHandler(
             }
 
             if (order.Status == OrderStatusEnum.Cancelled)
-            {
-                logger.LogWarning("Order cancellation failed: order {OrderId} already cancelled", request.OrderId);
                 return Result.Failure(OrderErrors.AlreadyCancelled);
-            }
 
             if (order.Status != OrderStatusEnum.Pending)
-            {
-                logger.LogWarning("Order cancellation failed: order {OrderId} is in status {Status} and cannot be cancelled",
-                    request.OrderId, order.Status);
                 return Result.Failure(OrderErrors.CannotBeCancelled);
-            }
 
             var productIds = order.Items.Select(i => i.ProductId).ToList();
             var products = await productRepository.LockForUpdateAsync(productIds, ct);

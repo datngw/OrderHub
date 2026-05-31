@@ -14,8 +14,11 @@ public sealed class GlobalExceptionHandler(
     {
         var (statusCode, title, detail) = MapException(exception, httpContext);
 
-        logger.LogError(exception, "Exception occurred. TraceId: {TraceId}",
-            httpContext.TraceIdentifier);
+        if (exception is not AppException)
+        {
+            logger.LogError(exception, "Unhandled exception occurred. TraceId: {TraceId}",
+                httpContext.TraceIdentifier);
+        }
 
         httpContext.Response.StatusCode = statusCode;
 

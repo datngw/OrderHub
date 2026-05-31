@@ -29,10 +29,7 @@ public sealed class LoginCommandHandler(
         var user = await userRepository.GetByEmailAsync(request.Email.ToLowerInvariant(), cancellationToken);
 
         if (user is null || !passwordHasher.VerifyPassword(request.Password, user.PasswordHash))
-        {
-            logger.LogWarning("Login failed for {Email}: invalid credentials", request.Email);
             return Result<AuthResponse>.Failure(AuthErrors.InvalidCredentials);
-        }
 
         var accessToken = tokenService.GenerateAccessToken(user.Id, user.Email, user.Role.ToString());
         var refreshToken = RefreshToken.Create(

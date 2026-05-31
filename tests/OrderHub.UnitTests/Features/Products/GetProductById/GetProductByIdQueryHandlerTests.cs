@@ -1,7 +1,6 @@
 using Moq;
 using FluentAssertions;
 using Microsoft.Extensions.Caching.Memory;
-using Microsoft.Extensions.Logging;
 using OrderHub.Application.Features.Products;
 using OrderHub.Application.Features.Products.GetProductById;
 using OrderHub.Domain.Common;
@@ -24,8 +23,7 @@ public class GetProductByIdQueryHandlerTests
     {
         // Fresh cache per test to avoid cross-test contamination
         var cache = MockHelpers.CreateMemoryCache();
-        var logger = Mock.Of<ILogger<GetProductByIdQueryHandler>>();
-        return new GetProductByIdQueryHandler(_productRepositoryMock.Object, cache, logger);
+        return new GetProductByIdQueryHandler(_productRepositoryMock.Object, cache);
     }
 
     [Fact]

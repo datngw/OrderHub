@@ -21,10 +21,7 @@ public sealed class CreateProductCommandHandler(
     public async Task<Result<ProductResponse>> Handle(CreateProductCommand request, CancellationToken cancellationToken)
     {
         if (await productRepository.ExistsBySkuAsync(request.SKU, cancellationToken))
-        {
-            logger.LogWarning("Product creation failed: SKU {SKU} already exists", request.SKU);
             return Result<ProductResponse>.Failure(ProductErrors.SkuAlreadyExists(request.SKU));
-        }
 
         var product = request.Adapt<Product>();
         productRepository.Add(product);
