@@ -39,8 +39,10 @@ public class OrderRepository(OrderHubDbContext context) : IOrderRepository
     public async Task<Order?> GetByIdForUpdateAsync(Guid id, CancellationToken ct)
     {
         return await context.Orders
+            .FromSqlInterpolated(
+                $@"SELECT * FROM ""Orders"" WHERE ""Id"" = {id} FOR UPDATE")
             .Include(o => o.Items)
-            .FirstOrDefaultAsync(o => o.Id == id, ct);
+            .FirstOrDefaultAsync(ct);
     }
 
     public async Task<List<TopProductRevenue>> GetTopProductsByRevenueAsync(
