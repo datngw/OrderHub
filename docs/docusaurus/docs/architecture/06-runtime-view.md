@@ -133,9 +133,44 @@ sequenceDiagram
 
 ---
 
-## 6.3 Scenario 3: Cache Retrieval with Thundering Herd Prevention
+## 6.3 Scenario 3: High-Performance Catalog Search & Caching (GET /api/v1/products)
 
-When a high-traffic endpoint (e.g., `GET /api/v1/products`) experiences a cache miss, the `CacheStampedeGuard` ensures only one request queries the database to re-populate the cache, protecting database resources.
+To guarantee sub-200ms (typically sub-50ms) latency for the catalog search endpoint under high-traffic load, OrderHub implements a dual-path caching and search-indexing strategy.
+
+### 6.3.1 Scenario 3a: High-Performance Cache HIT (Fast Path - Latency < 5ms)
+
+When the queried catalog parameters are already cached, the handler retrieves the pre-assembled results directly from `IMemoryCache` in memory. This path bypasses the database and locks entirely, completing in under 5ms.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Client as Customer Client
+    participant API as OrderHub.Api
+    participant Handler as GetProductsQueryHandler
+    participant Cache as IMemoryCache
+
+    Client->>API: GET /api/v1/products?search=iPhone&page=1
+    API->>Handler: Dispatch GetProductsQuery
+    
+    %% Step 1: Resolve current cache version
+    Handler->>Cache: TryGetValue("products:version")
+    Cache-->>Handler: Return active version GUID
+    
+    %% Step 2: Look up specific query cache key
+    Handler->>Cache: TryGetValue("products:v_guid:search=iPhone:page=1")
+    Cache-->>Handler: Return cached PagedResult<ProductResponse>
+    
+    Note over Handler,Cache: Cache HIT: Directly returns result without DB or semaphore locking.
+    
+    Handler-->>API: Return Result.Success(cachedData)
+    API-->>Client: HTTP 200 OK (Response served in < 5ms)
+```
+
+---
+
+### 6.3.2 Scenario 3b: Cache MISS with Thundering Herd Prevention and GIN Search (Latency < 100ms)
+
+When concurrent requests miss the cache (e.g. after database migrations or invalidation), the `CacheStampedeGuard` locks concurrent threads on a key-specific semaphore to prevent overloading the database. The single database thread resolves the text query in milliseconds using the **GIN Trigram Index** before populating the cache.
 
 ```mermaid
 sequenceDiagram
@@ -149,8 +184,8 @@ sequenceDiagram
     participant DB as PostgreSQL 16
 
     Note over ClientA,ClientB: Both requests arrive at the same millisecond during a cache miss
-    ClientA->>API: GET /api/v1/products?page=1
-    ClientB->>API: GET /api/v1/products?page=1
+    ClientA->>API: GET /api/v1/products?search=iPhone&page=1
+    ClientB->>API: GET /api/v1/products?search=iPhone&page=1
     API->>Handler: Dispatch Query A
     API->>Handler: Dispatch Query B
     
@@ -171,15 +206,16 @@ sequenceDiagram
     Guard->>Cache: TryGetValue(cacheKeyA) (Double Check)
     Note over Guard: Client A gets Cache Miss
     
-    %% Step 4: Query database and write to cache
-    Guard->>DB: Query Products (Filtered + Paginated)
+    %% Step 4: Query database via GIN Trigram search index
+    Guard->>DB: Query Products via GIN Trigram Index (Name ILIKE '%iPhone%')
+    Note over DB: pg_trgm index query executes in < 30ms (no sequential scans)
     DB-->>Guard: Return products data
     Guard->>Cache: Write to Cache (30s sliding / 5m absolute TTL)
     Guard->>Guard: Release SemaphoreSlim
     Note over Guard: Client A releases lock. Client B's thread is unblocked.
     Guard-->>Handler: Return products data
     Handler-->>API: Return Result.Success
-    API-->>ClientA: HTTP 200 OK (Fresh DB Data)
+    API-->>ClientA: HTTP 200 OK (Fresh DB Data, latency < 100ms)
 
     %% Step 5: Loser processing after unblock
     Guard->>Guard: Acquire SemaphoreSlim(cacheKeyA)
