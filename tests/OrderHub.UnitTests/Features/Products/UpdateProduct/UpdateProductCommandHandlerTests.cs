@@ -46,12 +46,11 @@ public class UpdateProductCommandHandlerTests
             Price = 10.00m,
             Stock = 50,
             Category = "Electronics",
-            IsActive = true,
             CreatedAt = DateTime.UtcNow
         };
 
         var command = new UpdateProductCommand(
-            productId, "New Name", "New Description", 19.99m, 75, "Gadgets");
+            productId, "New Name", "New Description", 19.99m, 75, "Gadgets", true);
 
         _productRepositoryMock
             .Setup(r => r.GetByIdAsync(productId, It.IsAny<CancellationToken>()))
@@ -71,9 +70,9 @@ public class UpdateProductCommandHandlerTests
         result.Value.Price.Should().Be(19.99m);
         result.Value.Stock.Should().Be(75);
         result.Value.Category.Should().Be("Gadgets");
-        // SKU and IsActive should remain unchanged (mapping config ignores them)
-        result.Value.SKU.Should().Be("SKU-001");
         result.Value.IsActive.Should().BeTrue();
+        // SKU should remain unchanged (mapping config ignores it)
+        result.Value.SKU.Should().Be("SKU-001");
 
         _unitOfWorkMock.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
@@ -84,7 +83,7 @@ public class UpdateProductCommandHandlerTests
         // Arrange
         var productId = Guid.NewGuid();
         var command = new UpdateProductCommand(
-            productId, "New Name", "New Description", 19.99m, 75, "Gadgets");
+            productId, "New Name", "New Description", 19.99m, 75, "Gadgets", true);
 
         _productRepositoryMock
             .Setup(r => r.GetByIdAsync(productId, It.IsAny<CancellationToken>()))

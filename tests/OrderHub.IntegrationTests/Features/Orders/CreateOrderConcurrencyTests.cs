@@ -1,7 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
 using FluentAssertions;
-using OrderHub.Api.Endpoints.Orders.Requests;
 using OrderHub.IntegrationTests.Shared;
 
 namespace OrderHub.IntegrationTests.Features.Orders;
@@ -13,19 +12,30 @@ public class CreateOrderConcurrencyTests(IntegrationTestFixture fixture) : IAsyn
     public Task DisposeAsync() => Task.CompletedTask;
 
     [Fact]
-    public async Task CreateOrder_With20ConcurrentRequestsAndStock5_Exactly5Succeed()
+    public async Task CreateOrder_With20ConcurrentUsersAndStock5_Exactly5Succeed()
     {
         // Arrange
         const int totalRequests = 20;
         const int stock = 5;
         var productId = await fixture.SeedProductAsync(stock);
-        var client = await fixture.CreateAuthenticatedCustomerAsync();
 
-        var request = new CreateOrderRequest([new OrderItemRequest(productId, 1)]);
+        // Create 20 authenticated customers, each with the product in their basket
+        var clients = new List<HttpClient>();
+        for (var i = 0; i < totalRequests; i++)
+        {
+            var client = await fixture.CreateAuthenticatedCustomerAsync();
+            var addBasketResponse = await client.PostAsJsonAsync("/api/v1/basket/items", new
+            {
+                ProductId = productId,
+                Quantity = 1
+            });
+            addBasketResponse.EnsureSuccessStatusCode();
+            clients.Add(client);
+        }
 
-        // Act — fire concurrent order requests
-        var responses = await Task.WhenAll(Enumerable.Range(0, totalRequests)
-            .Select(_ => client.PostAsJsonAsync("/api/v1/orders", request)));
+        // Act — all 20 users checkout concurrently
+        var responses = await Task.WhenAll(clients.Select(client =>
+            client.PostAsJsonAsync("/api/v1/orders", new { Note = (string?)null })));
 
         // Assert — count HTTP status codes
         var successes = responses.Count(r => r.StatusCode == HttpStatusCode.Created);

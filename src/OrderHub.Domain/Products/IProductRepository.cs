@@ -10,6 +10,7 @@ public interface IProductRepository
         decimal? minPrice,
         decimal? maxPrice,
         string? search,
+        bool? isActive,
         string? sortBy,
         string? sortOrder,
         int page,

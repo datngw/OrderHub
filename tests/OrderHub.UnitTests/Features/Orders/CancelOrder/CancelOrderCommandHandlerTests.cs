@@ -59,8 +59,7 @@ public class CancelOrderCommandHandlerTests
             Description = "A widget",
             Price = 10m,
             Stock = 7,
-            Category = "Test",
-            IsActive = true
+            Category = "Test"
         };
 
         var order = new Order

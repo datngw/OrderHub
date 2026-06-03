@@ -46,7 +46,6 @@ public class DeleteProductCommandHandlerTests
             Price = 9.99m,
             Stock = 50,
             Category = "Electronics",
-            IsActive = true,
             CreatedAt = DateTime.UtcNow
         };
 
@@ -65,13 +64,13 @@ public class DeleteProductCommandHandlerTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        product.IsActive.Should().BeFalse();
+        product.IsDeleted.Should().BeTrue();
 
         _unitOfWorkMock.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
-    public async Task Handle_AlreadyInactive_ReturnsSuccessIdempotent()
+    public async Task Handle_AlreadyDeleted_ReturnsSuccessIdempotent()
     {
         // Arrange
         var productId = Guid.NewGuid();
@@ -84,7 +83,7 @@ public class DeleteProductCommandHandlerTests
             Price = 9.99m,
             Stock = 50,
             Category = "Electronics",
-            IsActive = false,
+            IsDeleted = true,
             CreatedAt = DateTime.UtcNow
         };
 
@@ -99,7 +98,6 @@ public class DeleteProductCommandHandlerTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        product.IsActive.Should().BeFalse();
 
         _unitOfWorkMock.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
     }

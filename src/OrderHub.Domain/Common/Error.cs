@@ -1,14 +1,5 @@
 namespace OrderHub.Domain.Common;
 
-public enum ErrorType
-{
-    Failure = 0,
-    Validation = 1,
-    Problem = 2,
-    NotFound = 3,
-    Conflict = 4
-}
-
 public record Error
 {
     public static readonly Error None = new(string.Empty, string.Empty, ErrorType.Failure);

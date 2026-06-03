@@ -11,6 +11,7 @@ using OrderHub.Application.Features.Products;
 using OrderHub.Application.Features.Products.CreateProduct;
 using OrderHub.Application.Features.Products.DeleteProduct;
 using OrderHub.Application.Features.Products.GetProductById;
+using OrderHub.Application.Features.Products.GetAdminProducts;
 using OrderHub.Application.Features.Products.GetProducts;
 using OrderHub.Application.Features.Products.UpdateProduct;
 
@@ -35,6 +36,12 @@ public sealed class ProductEndpoints : IEndpointGroup
             .WithName("GetProducts").WithSummary("Get paginated product list with filters")
             .HasApiVersion(new ApiVersion(1))
             .Produces<PagedResult<ProductResponse>>();
+
+        group.MapGet("/admin", HandleGetAdminProducts)
+            .WithName("GetAdminProducts").WithSummary("Get all products (admin view, includes inactive)")
+            .HasApiVersion(new ApiVersion(1))
+            .Produces<PagedResult<ProductResponse>>()
+            .RequireAuthorization(AuthorizationPolicies.Policies.AdminOnly);
 
         group.MapGet("/{id:guid}", HandleGetProduct)
             .WithName("GetProduct").WithSummary("Get product by ID")
@@ -73,6 +80,13 @@ public sealed class ProductEndpoints : IEndpointGroup
         return Results.Ok(result.Value);
     }
 
+    private static async Task<IResult> HandleGetAdminProducts(
+        [AsParameters] GetAdminProductsQuery query, IMediator mediator, CancellationToken ct)
+    {
+        var result = await mediator.Send(query, ct);
+        return Results.Ok(result.Value);
+    }
+
     private static async Task<IResult> HandleGetProduct(
         Guid id, IMediator mediator, CancellationToken ct)
     {
@@ -91,7 +105,7 @@ public sealed class ProductEndpoints : IEndpointGroup
     private static async Task<IResult> HandleUpdateProduct(
         Guid id, [FromBody] UpdateProductRequest request, IMediator mediator, CancellationToken ct)
     {
-        var command = new UpdateProductCommand(id, request.Name, request.Description, request.Price, request.Stock, request.Category);
+        var command = new UpdateProductCommand(id, request.Name, request.Description, request.Price, request.Stock, request.Category, request.IsActive);
         var result = await mediator.Send(command, ct);
         return Results.Ok(result.Value);
     }

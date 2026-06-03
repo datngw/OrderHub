@@ -41,7 +41,6 @@ public class GetProductByIdQueryHandlerTests
             Price = 9.99m,
             Stock = 100,
             Category = "Electronics",
-            IsActive = true,
             CreatedAt = DateTime.UtcNow
         };
 
@@ -64,7 +63,6 @@ public class GetProductByIdQueryHandlerTests
         result.Value.Price.Should().Be(9.99m);
         result.Value.Stock.Should().Be(100);
         result.Value.Category.Should().Be("Electronics");
-        result.Value.IsActive.Should().BeTrue();
     }
 
     [Fact]
@@ -77,6 +75,40 @@ public class GetProductByIdQueryHandlerTests
         _productRepositoryMock
             .Setup(r => r.GetByIdAsync(productId, It.IsAny<CancellationToken>()))
             .ReturnsAsync((Product?)null);
+
+        var handler = CreateHandler();
+
+        // Act
+        var result = await handler.Handle(query, CancellationToken.None);
+
+        // Assert
+        result.IsFailure.Should().BeTrue();
+        result.Error.Should().Be(ProductErrors.NotFoundById(productId));
+    }
+
+    [Fact]
+    public async Task Handle_DeletedProduct_ReturnsFailure()
+    {
+        // Arrange
+        var productId = Guid.NewGuid();
+        var product = new Product
+        {
+            Id = productId,
+            SKU = "SKU-001",
+            Name = "Widget",
+            Description = "A widget",
+            Price = 9.99m,
+            Stock = 100,
+            Category = "Electronics",
+            IsDeleted = true,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        var query = new GetProductByIdQuery(productId);
+
+        _productRepositoryMock
+            .Setup(r => r.GetByIdAsync(productId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(product);
 
         var handler = CreateHandler();
 

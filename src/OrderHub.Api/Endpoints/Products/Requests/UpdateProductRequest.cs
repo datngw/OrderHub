@@ -5,4 +5,5 @@ public record UpdateProductRequest(
     string Description,
     decimal Price,
     int Stock,
-    string Category);
+    string Category,
+    bool IsActive);

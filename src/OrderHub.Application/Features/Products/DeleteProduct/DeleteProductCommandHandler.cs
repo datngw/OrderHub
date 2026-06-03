@@ -23,10 +23,10 @@ public sealed class DeleteProductCommandHandler(
         if (product is null)
             return Result.Failure(ProductErrors.NotFoundById(request.Id));
 
-        if (!product.IsActive)
+        if (product.IsDeleted)
             return Result.Success();
 
-        product.IsActive = false;
+        product.IsDeleted = true;
 
         await unitOfWork.SaveChangesAsync(cancellationToken);
 

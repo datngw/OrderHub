@@ -10,6 +10,7 @@ public interface IOrderRepository
         DateTime? from, DateTime? to, int top, CancellationToken ct);
     Task<List<RevenueByDay>> GetRevenueByDayAsync(
         DateTime? from, DateTime? to, CancellationToken ct);
+    Task<Order?> GetByIdIncludingDeletedAsync(Guid id, CancellationToken ct);
     void Add(Order order);
 }
 

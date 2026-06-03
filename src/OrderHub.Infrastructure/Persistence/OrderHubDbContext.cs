@@ -25,6 +25,10 @@ public class OrderHubDbContext : DbContext
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.HasPostgresExtension("pg_trgm");
+
+        modelBuilder.Entity<Order>().HasQueryFilter(o => !o.IsDeleted);
+        modelBuilder.Entity<Product>().HasQueryFilter(p => !p.IsDeleted);
+
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(OrderHubDbContext).Assembly);
     }
 

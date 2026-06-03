@@ -222,42 +222,125 @@ Authorization: Bearer {{adminAccessToken}}
 ###
 
 ### ============================================================
-### Orders — Create (authenticated)
+### Products — Admin List (admin only, includes inactive)
 ### ============================================================
 
-### Place a new order — replace productId with a real GUID, copy orderId from response
-POST {{baseUrl}}/orders
+### Get all products (admin view, includes soft-deleted)
+GET {{baseUrl}}/products/admin?page=1&pageSize=10
+Authorization: Bearer {{adminAccessToken}}
+Accept: application/json
+
+###
+
+### Get admin products — filter by active status
+GET {{baseUrl}}/products/admin?isActive=false&page=1&pageSize=10
+Authorization: Bearer {{adminAccessToken}}
+Accept: application/json
+
+###
+
+### Get admin products — search and filter
+GET {{baseUrl}}/products/admin?search=headphones&category=Electronics&sortBy=price&sortOrder=asc&page=1&pageSize=10
+Authorization: Bearer {{adminAccessToken}}
+Accept: application/json
+
+###
+
+### ============================================================
+### Basket — Get (authenticated)
+### ============================================================
+
+### Get current user's basket
+GET {{baseUrl}}/basket
+Authorization: Bearer {{accessToken}}
+Accept: application/json
+
+###
+
+### ============================================================
+### Basket — Add Item (authenticated)
+### ============================================================
+
+### Add a product to basket — replace GUID with a real product ID
+POST {{baseUrl}}/basket/items
 Authorization: Bearer {{accessToken}}
 Content-Type: application/json
 
 {
-  "items": [
-    {
-      "productId": "f47ac10b-58cc-4372-a567-0e02b2c3d479",
-      "quantity": 2
-    }
-  ]
+  "productId": "f47ac10b-58cc-4372-a567-0e02b2c3d479",
+  "quantity": 2
 }
 
 ###
 
-### Place an order with multiple items
+### Add a second product to basket
+POST {{baseUrl}}/basket/items
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "productId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "quantity": 1
+}
+
+###
+
+### ============================================================
+### Basket — Update Item (authenticated)
+### ============================================================
+
+### Update item quantity — replace GUID with the product ID in basket
+PUT {{baseUrl}}/basket/items/f47ac10b-58cc-4372-a567-0e02b2c3d479
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "quantity": 5
+}
+
+###
+
+### ============================================================
+### Basket — Remove Item (authenticated)
+### ============================================================
+
+### Remove an item from basket — replace GUID with the product ID
+DELETE {{baseUrl}}/basket/items/f47ac10b-58cc-4372-a567-0e02b2c3d479
+Authorization: Bearer {{accessToken}}
+
+###
+
+### ============================================================
+### Basket — Clear (authenticated)
+### ============================================================
+
+### Clear the entire basket
+DELETE {{baseUrl}}/basket
+Authorization: Bearer {{accessToken}}
+
+###
+
+### ============================================================
+### Orders — Create from basket (authenticated)
+### ============================================================
+
+### Place an order from basket items
 POST {{baseUrl}}/orders
 Authorization: Bearer {{accessToken}}
 Content-Type: application/json
 
 {
-  "items": [
-    {
-      "productId": "f47ac10b-58cc-4372-a567-0e02b2c3d479",
-      "quantity": 1
-    },
-    {
-      "productId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
-      "quantity": 3
-    }
-  ]
+  "note": "Please deliver during business hours"
 }
+
+###
+
+### Place an order without note
+POST {{baseUrl}}/orders
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{}
 
 ###
 
@@ -327,6 +410,16 @@ Content-Type: application/json
 ### Cancel a pending order (restores stock) — replace GUID with real order ID
 POST {{baseUrl}}/orders/7c9e6679-7425-40de-944b-e07fc1f90ae7/cancel
 Authorization: Bearer {{accessToken}}
+
+###
+
+### ============================================================
+### Orders — Delete (admin only, soft delete)
+### ============================================================
+
+### Soft delete an order — replace GUID with real order ID
+DELETE {{baseUrl}}/orders/7c9e6679-7425-40de-944b-e07fc1f90ae7
+Authorization: Bearer {{adminAccessToken}}
 
 ###
 

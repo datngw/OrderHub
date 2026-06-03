@@ -32,19 +32,23 @@ public class ProductConfiguration : IEntityTypeConfiguration<Product>
             .IsRequired()
             .HasMaxLength(ProductConstraints.CategoryMaxLength);
 
-        // Covering index for default query: WHERE IsActive ORDER BY CreatedAt DESC
+        builder.Property(p => p.IsActive)
+            .HasDefaultValue(true)
+            .IsRequired();
+
+        // Covering index for default customer query: WHERE IsActive = true ORDER BY CreatedAt DESC
         builder.HasIndex(p => new { p.IsActive, p.CreatedAt })
             .IsDescending(false, true)
             .IncludeProperties("Id", "SKU", "Name", "Description", "Price", "Stock", "Category")
             .HasDatabaseName("IX_Products_IsActive_CreatedAt");
 
-        // Covering index for category filter: WHERE IsActive AND Category = ? ORDER BY CreatedAt DESC
+        // Covering index for category filter: WHERE IsActive = true AND Category = ? ORDER BY CreatedAt DESC
         builder.HasIndex(p => new { p.IsActive, p.Category, p.CreatedAt })
             .IsDescending(false, false, true)
             .IncludeProperties("Id", "SKU", "Name", "Description", "Price", "Stock")
             .HasDatabaseName("IX_Products_IsActive_Category_CreatedAt");
 
-        // Covering index for price range: WHERE IsActive AND Price BETWEEN ? AND ?
+        // Index for price range: WHERE IsActive = true AND Price BETWEEN ? AND ?
         builder.HasIndex(p => new { p.IsActive, p.Price })
             .IncludeProperties("Id", "SKU", "Name", "Description", "Stock", "Category", "CreatedAt")
             .HasDatabaseName("IX_Products_IsActive_Price");
@@ -54,5 +58,7 @@ public class ProductConfiguration : IEntityTypeConfiguration<Product>
             .HasMethod("gin")
             .HasOperators("gin_trgm_ops")
             .HasDatabaseName("IX_Products_Name_Trgm");
+
+        builder.HasIndex(p => p.IsDeleted);
     }
 }

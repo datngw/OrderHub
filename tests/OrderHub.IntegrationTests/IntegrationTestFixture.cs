@@ -39,7 +39,10 @@ public class IntegrationTestFixture : WebApplicationFactory<Program>, IAsyncLife
                 ["Jwt:Issuer"] = "OrderHub",
                 ["Jwt:Audience"] = "OrderHub",
                 ["Jwt:AccessTokenMinutes"] = "15",
-                ["Jwt:RefreshTokenDays"] = "7"
+                ["Jwt:RefreshTokenDays"] = "7",
+                //["Serilog:Using:2"] = "Serilog.Sinks.Seq",
+                //["Serilog:WriteTo:2:Name"] = "Seq",
+                //["Serilog:WriteTo:2:Args:serverUrl"] = "http://localhost:5341"
             });
         });
 

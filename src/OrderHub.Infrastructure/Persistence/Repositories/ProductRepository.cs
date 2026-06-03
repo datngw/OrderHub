@@ -26,13 +26,14 @@ public class ProductRepository(OrderHubDbContext context) : IProductRepository
         decimal? minPrice,
         decimal? maxPrice,
         string? search,
+        bool? isActive,
         string? sortBy,
         string? sortOrder,
         int page,
         int pageSize,
         CancellationToken ct)
     {
-        var query = context.Products.AsNoTracking().Where(p => p.IsActive);
+        var query = context.Products.AsNoTracking();
 
         if (!string.IsNullOrWhiteSpace(category))
             query = query.Where(p => p.Category == category);
@@ -42,6 +43,8 @@ public class ProductRepository(OrderHubDbContext context) : IProductRepository
             query = query.Where(p => p.Price <= maxPrice.Value);
         if (!string.IsNullOrWhiteSpace(search))
             query = query.Where(p => EF.Functions.ILike(p.Name, $"%{search}%"));
+        if (isActive.HasValue)
+            query = query.Where(p => p.IsActive == isActive.Value);
 
         query = ApplySorting(query, sortBy, sortOrder);
 

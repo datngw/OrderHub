@@ -144,5 +144,16 @@ public class OrderRepository(OrderHubDbContext context) : IOrderRepository
         )).ToList();
     }
 
+    public async Task<Order?> GetByIdIncludingDeletedAsync(Guid id, CancellationToken ct)
+    {
+        return await context.Orders
+            .IgnoreQueryFilters()
+            .Include(o => o.Items)
+            .ThenInclude(i => i.Product)
+            .AsNoTracking()
+            .AsSplitQuery()
+            .FirstOrDefaultAsync(o => o.Id == id, ct);
+    }
+
     public void Add(Order order) => context.Orders.Add(order);
 }

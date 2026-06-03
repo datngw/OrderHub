@@ -7,6 +7,7 @@ using OrderHub.Application.Common.Messaging;
 using OrderHub.Application.Common.Persistence;
 using OrderHub.Application.Common.Security;
 using OrderHub.Application.Features.Orders;
+using OrderHub.Domain.Baskets;
 using OrderHub.Domain.Common;
 using OrderHub.Domain.Orders;
 using OrderHub.Domain.Products;
@@ -15,6 +16,7 @@ namespace OrderHub.Application.Features.Orders.CreateOrder;
 
 public sealed class CreateOrderCommandHandler(
     IUserContext userContext,
+    IBasketRepository basketRepository,
     IOrderRepository orderRepository,
     IProductRepository productRepository,
     IUnitOfWork unitOfWork,
@@ -25,9 +27,14 @@ public sealed class CreateOrderCommandHandler(
     public async Task<Result<OrderResponse>> Handle(CreateOrderCommand request, CancellationToken cancellationToken)
     {
         var userId = userContext.UserId;
-        var productIds = request.Items.Select(i => i.ProductId).Distinct().ToList();
+        var basket = await basketRepository.GetByUserIdAsync(userId, cancellationToken);
 
-        logger.LogInformation("Creating order for user {UserId} with {ItemCount} items", userId, productIds.Count);
+        if (basket is null || basket.Items.Count == 0)
+            return Result<OrderResponse>.Failure(OrderErrors.EmptyOrder);
+
+        var productIds = basket.Items.Select(i => i.ProductId).Distinct().ToList();
+
+        logger.LogInformation("Creating order from basket for user {UserId} with {ItemCount} product(s)", userId, productIds.Count);
 
         return await unitOfWork.ExecuteInTransactionAsync(async ct =>
         {
@@ -38,7 +45,7 @@ public sealed class CreateOrderCommandHandler(
             var errors = new List<Error>();
             var validatedItems = new List<(Product Product, int Quantity)>();
 
-            foreach (var item in request.Items)
+            foreach (var item in basket.Items)
             {
                 if (!productMap.TryGetValue(item.ProductId, out var product))
                 {
@@ -46,7 +53,7 @@ public sealed class CreateOrderCommandHandler(
                     continue;
                 }
 
-                if (!product.IsActive)
+                if (product.IsDeleted)
                 {
                     errors.Add(OrderErrors.ProductUnavailable(item.ProductId));
                     continue;
@@ -64,7 +71,7 @@ public sealed class CreateOrderCommandHandler(
             if (errors.Count > 0)
                 return Result<OrderResponse>.Failure(errors[0]);
 
-            // Phase 2: Mutate — only runs when all items are valid
+            // Phase 2: Mutate — deduct stock, create order items with price snapshot
             var orderItems = new List<OrderItem>();
             foreach (var (product, quantity) in validatedItems)
             {
@@ -85,10 +92,14 @@ public sealed class CreateOrderCommandHandler(
                 UserId = userId,
                 Status = OrderStatusEnum.Pending,
                 TotalAmount = totalAmount,
-                Items = orderItems
+                Items = orderItems,
+                Note = request.Note ?? string.Empty
             };
 
             orderRepository.Add(order);
+
+            // Clear basket after successful checkout
+            await basketRepository.RemoveAsync(userId, ct);
 
             cache.InvalidateReports();
 

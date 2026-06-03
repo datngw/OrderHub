@@ -61,7 +61,8 @@ public class GetProductsQueryHandlerTests
         _productRepositoryMock
             .Setup(r => r.GetFilteredAsync(
                 It.IsAny<string?>(), It.IsAny<decimal?>(), It.IsAny<decimal?>(),
-                It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<string?>(),
+                It.IsAny<string?>(), true,
+                It.IsAny<string?>(), It.IsAny<string?>(),
                 It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((products, totalCount));
 

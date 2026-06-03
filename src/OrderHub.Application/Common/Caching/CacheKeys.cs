@@ -5,6 +5,7 @@ namespace OrderHub.Application.Common.Caching;
 public static class CacheKeys
 {
     private const string ProductVersionKey = "products:version";
+    private const string AdminProductVersionKey = "admin:products:version";
     private const string ReportVersionKey = "reports:version";
 
     public static class Products
@@ -19,6 +20,14 @@ public static class CacheKeys
             $"products:list:v{version}:{page}:{pageSize}:{category}:{minPrice}:{maxPrice}:{search}:{sortBy}:{sortOrder}";
     }
 
+    public static class AdminProducts
+    {
+        public static string List(string version, int page, int pageSize, string? category,
+            decimal? minPrice, decimal? maxPrice, string? search, bool? isActive,
+            string? sortBy, string? sortOrder) =>
+            $"admin:products:list:v{version}:{page}:{pageSize}:{category}:{minPrice}:{maxPrice}:{search}:{isActive}:{sortBy}:{sortOrder}";
+    }
+
     public static class Reports
     {
         public static string TopProducts(string version, DateTime? from, DateTime? to, int top) =>
@@ -30,6 +39,14 @@ public static class CacheKeys
 
     public static string GetProductVersion(this IMemoryCache cache) =>
         cache.GetOrCreate(ProductVersionKey, entry =>
+        {
+            entry.SetPriority(CacheItemPriority.NeverRemove)
+                .SetSize(1);
+            return Guid.NewGuid().ToString("N")[..8];
+        })!;
+
+    public static string GetAdminProductVersion(this IMemoryCache cache) =>
+        cache.GetOrCreate(AdminProductVersionKey, entry =>
         {
             entry.SetPriority(CacheItemPriority.NeverRemove)
                 .SetSize(1);
@@ -50,6 +67,7 @@ public static class CacheKeys
             cache.Remove(Products.ById(productId.Value));
 
         cache.Remove(ProductVersionKey);
+        cache.Remove(AdminProductVersionKey);
     }
 
     public static void InvalidateReports(this IMemoryCache cache)

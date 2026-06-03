@@ -8,6 +8,7 @@ using OrderHub.Application.Common.Pagination;
 using OrderHub.Application.Features.Orders;
 using OrderHub.Application.Features.Orders.CancelOrder;
 using OrderHub.Application.Features.Orders.CreateOrder;
+using OrderHub.Application.Features.Orders.DeleteOrder;
 using OrderHub.Application.Features.Orders.GetMyOrders;
 using OrderHub.Application.Features.Orders.GetOrderById;
 using OrderHub.Application.Features.Orders.UpdateOrderStatus;
@@ -30,7 +31,7 @@ public sealed class OrderEndpoints : IEndpointGroup
             .RequireAuthorization();
 
         group.MapPost("/", HandleCreateOrder)
-            .WithName("CreateOrder").WithSummary("Create a new order")
+            .WithName("CreateOrder").WithSummary("Create a new order from basket")
             .HasApiVersion(new ApiVersion(1))
             .Produces<OrderResponse>(StatusCodes.Status201Created)
             .ProducesValidationProblem()
@@ -65,13 +66,19 @@ public sealed class OrderEndpoints : IEndpointGroup
             .ProducesProblem(StatusCodes.Status404NotFound)
             .ProducesProblem(StatusCodes.Status400BadRequest)
             .ProducesProblem(StatusCodes.Status403Forbidden);
+
+        group.MapDelete("/{id:guid}", HandleDeleteOrder)
+            .WithName("DeleteOrder").WithSummary("Soft delete an order (Admin only)")
+            .HasApiVersion(new ApiVersion(1))
+            .Produces(StatusCodes.Status204NoContent)
+            .ProducesProblem(StatusCodes.Status404NotFound)
+            .RequireAuthorization(AuthorizationPolicies.Policies.AdminOnly);
     }
 
     private static async Task<IResult> HandleCreateOrder(
-        [FromBody] CreateOrderRequest request, IMediator mediator, CancellationToken ct)
+        [FromBody] CreateOrderRequest? request, IMediator mediator, CancellationToken ct)
     {
-        var command = new CreateOrderCommand(
-            request.Items.Select(i => new CreateOrderItem(i.ProductId, i.Quantity)).ToList());
+        var command = new CreateOrderCommand(request?.Note);
         var result = await mediator.Send(command, ct);
         return Results.Created($"/api/v1/orders/{result.Value.Id}", result.Value);
     }
@@ -101,6 +108,13 @@ public sealed class OrderEndpoints : IEndpointGroup
         Guid id, IMediator mediator, CancellationToken ct)
     {
         await mediator.Send(new CancelOrderCommand(id), ct);
+        return Results.NoContent();
+    }
+
+    private static async Task<IResult> HandleDeleteOrder(
+        Guid id, IMediator mediator, CancellationToken ct)
+    {
+        await mediator.Send(new DeleteOrderCommand(id), ct);
         return Results.NoContent();
     }
 }

@@ -22,7 +22,7 @@ public sealed class GetProductByIdQueryHandler(
         var cached = await stampedeGuard.GetOrCreateAsync(cache, cacheKey, async entry =>
         {
             var product = await productRepository.GetByIdAsync(request.Id, cancellationToken);
-            return product is null || !product.IsActive ? null : product.Adapt<ProductResponse>();
+            return product is null || product.IsDeleted || !product.IsActive ? null : product.Adapt<ProductResponse>();
         }, entry =>
         {
             entry.SetSlidingExpiration(TimeSpan.FromSeconds(30))

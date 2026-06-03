@@ -9,6 +9,7 @@ using OrderHub.Application.Common;
 using OrderHub.Application.Common.Caching;
 using OrderHub.Application.Common.Security;
 using OrderHub.Application.Common.Persistence;
+using OrderHub.Domain.Baskets;
 using OrderHub.Domain.Orders;
 using OrderHub.Domain.Products;
 using OrderHub.Domain.Users;
@@ -57,6 +58,7 @@ public static class DependencyInjection
         services.AddScoped<IProductRepository, ProductRepository>();
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
+        services.AddScoped<IBasketRepository, BasketRepository>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
     }
 

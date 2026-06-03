@@ -11,7 +11,6 @@ public sealed class ProductMappingConfig : IRegister
             .Ignore(p => p.Id)
             .Ignore(p => p.SKU)
             .Ignore(p => p.CreatedAt)
-            .Ignore(p => p.UpdatedAt!)
-            .Ignore(p => p.IsActive);
+            .Ignore(p => p.UpdatedAt!);
     }
 }

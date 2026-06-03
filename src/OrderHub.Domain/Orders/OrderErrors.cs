@@ -30,4 +30,7 @@ public static class OrderErrors
 
     public static Error Forbidden =>
         Error.Problem("Orders.Forbidden", "You do not have permission to access this order.");
+
+    public static Error AlreadyDeleted =>
+        Error.Conflict("Orders.AlreadyDeleted", "Order is already deleted.");
 }

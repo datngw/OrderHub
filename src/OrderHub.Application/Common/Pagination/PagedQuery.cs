@@ -1,9 +1,9 @@
 namespace OrderHub.Application.Common.Pagination;
 
-public abstract record PagedQuery
+public abstract record PagedQueryFilter
 {
-    public int Page { get; init; } = 1;
-    public int PageSize { get; init; } = 20;
+    public int PageNumber { get; init; } = 1;
+    public int PageSize { get; init; } = 10;
     public string? SortBy { get; init; }
     public string? SortOrder { get; init; } = "desc";
 }

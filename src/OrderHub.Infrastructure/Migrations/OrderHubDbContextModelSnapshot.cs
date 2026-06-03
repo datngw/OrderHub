@@ -32,6 +32,13 @@ namespace OrderHub.Infrastructure.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Note")
+                        .IsRequired()
+                        .HasColumnType("text");
+
                     b.Property<int>("Status")
                         .HasColumnType("integer");
 
@@ -47,6 +54,8 @@ namespace OrderHub.Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("CreatedAt");
+
+                    b.HasIndex("IsDeleted");
 
                     b.HasIndex("Status");
 
@@ -108,6 +117,11 @@ namespace OrderHub.Infrastructure.Migrations
                         .HasColumnType("character varying(2000)");
 
                     b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true);
+
+                    b.Property<bool>("IsDeleted")
                         .HasColumnType("boolean");
 
                     b.Property<string>("Name")
@@ -130,6 +144,8 @@ namespace OrderHub.Infrastructure.Migrations
                         .HasColumnType("timestamp with time zone");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("IsDeleted");
 
                     b.HasIndex("Name")
                         .HasDatabaseName("IX_Products_Name_Trgm");
