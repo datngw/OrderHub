@@ -12,4 +12,6 @@ public class User : BaseEntity
 
     public List<Order> Orders { get; set; } = [];
     public List<RefreshToken> RefreshTokens { get; set; } = [];
+
+    public void UpdatePasswordHash(string newPasswordHash) => PasswordHash = newPasswordHash;
 }

@@ -18,4 +18,13 @@ public static class AuthErrors
 
     public static Error RefreshTokenExpired =>
         Error.Problem("Auth.RefreshTokenExpired", "Refresh token has expired.");
+
+    public static Error UserNotFound =>
+        Error.NotFound("Auth.UserNotFound", "No user found with this email.");
+
+    public static Error InvalidResetCode =>
+        Error.Problem("Auth.InvalidResetCode", "Invalid reset code.");
+
+    public static Error IncorrectCurrentPassword =>
+        Error.Problem("Auth.IncorrectCurrentPassword", "Current password is incorrect.");
 }

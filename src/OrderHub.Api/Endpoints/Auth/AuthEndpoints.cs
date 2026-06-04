@@ -7,6 +7,8 @@ using OrderHub.Api.Endpoints.Auth.Requests;
 using OrderHub.Api.Extensions;
 using OrderHub.Application.Common.Security;
 using OrderHub.Application.Features.Auth;
+using OrderHub.Application.Features.Auth.ChangePassword;
+using OrderHub.Application.Features.Auth.ForgotPassword;
 using OrderHub.Application.Features.Auth.Login;
 using OrderHub.Domain.Users;
 using OrderHub.Application.Features.Auth.Logout;
@@ -68,6 +70,26 @@ public sealed class AuthEndpoints : IEndpointGroup
             .ProducesValidationProblem()
             .ProducesProblem(StatusCodes.Status401Unauthorized)
             .ProducesProblem(StatusCodes.Status429TooManyRequests);
+
+        group.MapPost("/forgot-password", HandleForgotPassword)
+            .WithName("ForgotPassword").WithSummary("Reset password using verification code")
+            .HasApiVersion(new ApiVersion(1))
+            .AllowAnonymous()
+            .RequireRateLimiting("auth-login")
+            .Produces(StatusCodes.Status204NoContent)
+            .ProducesValidationProblem()
+            .ProducesProblem(StatusCodes.Status404NotFound)
+            .ProducesProblem(StatusCodes.Status429TooManyRequests);
+
+        group.MapPost("/change-password", HandleChangePassword)
+            .WithName("ChangePassword").WithSummary("Change password for authenticated user")
+            .HasApiVersion(new ApiVersion(1))
+            .RequireAuthorization()
+            .RequireRateLimiting("products")
+            .Produces(StatusCodes.Status204NoContent)
+            .ProducesValidationProblem()
+            .ProducesProblem(StatusCodes.Status401Unauthorized)
+            .ProducesProblem(StatusCodes.Status429TooManyRequests);
     }
 
     private static async Task<IResult> HandleRegister(
@@ -95,6 +117,23 @@ public sealed class AuthEndpoints : IEndpointGroup
         [FromBody] RefreshTokenRequest request, IMediator mediator, CancellationToken ct)
     {
         await mediator.Send(new LogoutCommand(request.RefreshToken), ct);
+        return Results.NoContent();
+    }
+
+    private static async Task<IResult> HandleForgotPassword(
+        [FromBody] ForgotPasswordRequest request, IMediator mediator, CancellationToken ct)
+    {
+        await mediator.Send(
+            new ForgotPasswordCommand(request.Email, request.Code, request.NewPassword), ct);
+        return Results.NoContent();
+    }
+
+    private static async Task<IResult> HandleChangePassword(
+        [FromBody] ChangePasswordRequest request, IMediator mediator,
+        IUserContext userContext, CancellationToken ct)
+    {
+        await mediator.Send(
+            new ChangePasswordCommand(userContext.UserId, request.CurrentPassword, request.NewPassword), ct);
         return Results.NoContent();
     }
 }
