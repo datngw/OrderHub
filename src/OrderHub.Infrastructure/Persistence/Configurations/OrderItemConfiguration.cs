@@ -21,6 +21,10 @@ public class OrderItemConfiguration : IEntityTypeConfiguration<OrderItem>
             .HasForeignKey(oi => oi.ProductId)
             .OnDelete(DeleteBehavior.Restrict);
 
+        // Index for Order → Items navigation (Include/ThenInclude JOINs)
+        builder.HasIndex(oi => oi.OrderId);
+
+        // Index for revenue reporting (JOIN from OrderItems to Products)
         builder.HasIndex(oi => oi.ProductId);
     }
 }

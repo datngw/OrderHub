@@ -5,4 +5,7 @@ public record AuthResponse(
     string RefreshToken,
     string Email,
     string FullName,
-    string Role);
+    string? Phone,
+    string Role,
+    DateTimeOffset AccessTokenExpiresAt,
+    DateTimeOffset RefreshTokenExpiresAt);

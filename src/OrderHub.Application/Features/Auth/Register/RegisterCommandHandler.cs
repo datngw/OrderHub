@@ -35,6 +35,7 @@ public sealed class RegisterCommandHandler(
             Email = request.Email.ToLowerInvariant(),
             PasswordHash = passwordHasher.HashPassword(request.Password),
             FullName = request.FullName,
+            Phone = string.IsNullOrWhiteSpace(request.Phone) ? null : request.Phone.Trim(),
             Role = UserRoleEnum.Customer
         };
 
@@ -59,6 +60,15 @@ public sealed class RegisterCommandHandler(
 
         var accessToken = tokenService.GenerateAccessToken(user.Id, user.Email, user.Role.ToString());
 
-        return Result<AuthResponse>.Success(user.Adapt<AuthResponse>() with { AccessToken = accessToken, RefreshToken = refreshToken.Token });
+        var accessTokenExpiresAt = clock.UtcNow.AddMinutes(_jwtOptions.AccessTokenMinutes);
+        var refreshTokenExpiresAt = clock.UtcNow.AddDays(_jwtOptions.RefreshTokenDays);
+
+        return Result<AuthResponse>.Success(user.Adapt<AuthResponse>() with
+        {
+            AccessToken = accessToken,
+            RefreshToken = refreshToken.Token,
+            AccessTokenExpiresAt = accessTokenExpiresAt,
+            RefreshTokenExpiresAt = refreshTokenExpiresAt,
+        });
     }
 }

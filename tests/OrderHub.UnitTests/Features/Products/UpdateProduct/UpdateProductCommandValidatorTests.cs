@@ -18,6 +18,8 @@ public class UpdateProductCommandValidatorTests
             9.99m,
             100,
             "Electronics",
+            null,
+            null,
             true);
 
         var result = await _validator.TestValidateAsync(command);
@@ -29,7 +31,7 @@ public class UpdateProductCommandValidatorTests
     [InlineData(null)]
     public async Task Validate_WithEmptyName_ShouldHaveError(string name)
     {
-        var command = new UpdateProductCommand(Guid.NewGuid(), name, "A useful widget", 9.99m, 100, "Electronics", true);
+        var command = new UpdateProductCommand(Guid.NewGuid(), name, "A useful widget", 9.99m, 100, "Electronics", null, null, true);
         var result = await _validator.TestValidateAsync(command);
         result.ShouldHaveValidationErrorFor(x => x.Name);
     }
@@ -37,7 +39,7 @@ public class UpdateProductCommandValidatorTests
     [Fact]
     public async Task Validate_WithTooLongName_ShouldHaveError()
     {
-        var command = new UpdateProductCommand(Guid.NewGuid(), new string('a', 201), "A useful widget", 9.99m, 100, "Electronics", true);
+        var command = new UpdateProductCommand(Guid.NewGuid(), new string('a', 201), "A useful widget", 9.99m, 100, "Electronics", null, null, true);
         var result = await _validator.TestValidateAsync(command);
         result.ShouldHaveValidationErrorFor(x => x.Name);
     }
@@ -45,7 +47,7 @@ public class UpdateProductCommandValidatorTests
     [Fact]
     public async Task Validate_WithTooLongDescription_ShouldHaveError()
     {
-        var command = new UpdateProductCommand(Guid.NewGuid(), "Widget", new string('a', 2001), 9.99m, 100, "Electronics", true);
+        var command = new UpdateProductCommand(Guid.NewGuid(), "Widget", new string('a', 2001), 9.99m, 100, "Electronics", null, null, true);
         var result = await _validator.TestValidateAsync(command);
         result.ShouldHaveValidationErrorFor(x => x.Description);
     }
@@ -53,7 +55,7 @@ public class UpdateProductCommandValidatorTests
     [Fact]
     public async Task Validate_WithZeroPrice_ShouldHaveError()
     {
-        var command = new UpdateProductCommand(Guid.NewGuid(), "Widget", "A useful widget", 0m, 100, "Electronics", true);
+        var command = new UpdateProductCommand(Guid.NewGuid(), "Widget", "A useful widget", 0m, 100, "Electronics", null, null, true);
         var result = await _validator.TestValidateAsync(command);
         result.ShouldHaveValidationErrorFor(x => x.Price);
     }
@@ -61,7 +63,7 @@ public class UpdateProductCommandValidatorTests
     [Fact]
     public async Task Validate_WithNegativePrice_ShouldHaveError()
     {
-        var command = new UpdateProductCommand(Guid.NewGuid(), "Widget", "A useful widget", -1m, 100, "Electronics", true);
+        var command = new UpdateProductCommand(Guid.NewGuid(), "Widget", "A useful widget", -1m, 100, "Electronics", null, null, true);
         var result = await _validator.TestValidateAsync(command);
         result.ShouldHaveValidationErrorFor(x => x.Price);
     }
@@ -69,7 +71,7 @@ public class UpdateProductCommandValidatorTests
     [Fact]
     public async Task Validate_WithNegativeStock_ShouldHaveError()
     {
-        var command = new UpdateProductCommand(Guid.NewGuid(), "Widget", "A useful widget", 9.99m, -1, "Electronics", true);
+        var command = new UpdateProductCommand(Guid.NewGuid(), "Widget", "A useful widget", 9.99m, -1, "Electronics", null, null, true);
         var result = await _validator.TestValidateAsync(command);
         result.ShouldHaveValidationErrorFor(x => x.Stock);
     }
@@ -79,7 +81,7 @@ public class UpdateProductCommandValidatorTests
     [InlineData(null)]
     public async Task Validate_WithEmptyCategory_ShouldHaveError(string category)
     {
-        var command = new UpdateProductCommand(Guid.NewGuid(), "Widget", "A useful widget", 9.99m, 100, category, true);
+        var command = new UpdateProductCommand(Guid.NewGuid(), "Widget", "A useful widget", 9.99m, 100, category, null, null, true);
         var result = await _validator.TestValidateAsync(command);
         result.ShouldHaveValidationErrorFor(x => x.Category);
     }
@@ -87,7 +89,7 @@ public class UpdateProductCommandValidatorTests
     [Fact]
     public async Task Validate_WithTooLongCategory_ShouldHaveError()
     {
-        var command = new UpdateProductCommand(Guid.NewGuid(), "Widget", "A useful widget", 9.99m, 100, new string('a', 101), true);
+        var command = new UpdateProductCommand(Guid.NewGuid(), "Widget", "A useful widget", 9.99m, 100, new string('a', 101), null, null, true);
         var result = await _validator.TestValidateAsync(command);
         result.ShouldHaveValidationErrorFor(x => x.Category);
     }

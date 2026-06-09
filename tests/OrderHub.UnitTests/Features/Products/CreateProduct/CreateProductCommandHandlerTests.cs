@@ -38,7 +38,7 @@ public class CreateProductCommandHandlerTests
     {
         // Arrange
         var command = new CreateProductCommand(
-            "SKU-001", "Widget", "A useful widget", 9.99m, 100, "Electronics");
+            "SKU-001", "Widget", "A useful widget", 9.99m, 100, "Electronics", null, null);
 
         _productRepositoryMock
             .Setup(r => r.ExistsBySkuAsync(command.SKU, It.IsAny<CancellationToken>()))
@@ -68,7 +68,7 @@ public class CreateProductCommandHandlerTests
     {
         // Arrange
         var command = new CreateProductCommand(
-            "SKU-DUP", "Widget", "A useful widget", 9.99m, 100, "Electronics");
+            "SKU-DUP", "Widget", "A useful widget", 9.99m, 100, "Electronics", null, null);
 
         _productRepositoryMock
             .Setup(r => r.ExistsBySkuAsync(command.SKU, It.IsAny<CancellationToken>()))

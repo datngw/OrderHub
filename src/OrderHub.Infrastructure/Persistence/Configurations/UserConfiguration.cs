@@ -25,6 +25,12 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
             .IsRequired()
             .HasMaxLength(UserConstraints.FullNameMaxLength);
 
+        builder.Property(u => u.Phone)
+            .HasMaxLength(UserConstraints.PhoneMaxLength)
+            .IsRequired(false);
+
+        builder.HasIndex(u => u.Phone).IsUnique();
+
         builder.HasMany(u => u.RefreshTokens)
             .WithOne(rt => rt.User)
             .HasForeignKey(rt => rt.UserId)

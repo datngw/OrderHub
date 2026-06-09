@@ -32,8 +32,10 @@ public static class AuthHelper
     private static async Task<AuthResponse> RegisterUserAsync(
         IntegrationTestFixture fixture, HttpClient client, UserRoleEnum role)
     {
-        var email = $"test-{Interlocked.Increment(ref _counter)}-{Guid.NewGuid():N}@test.com";
+        var count = Interlocked.Increment(ref _counter);
+        var email = $"test-{count}-{Guid.NewGuid():N}@test.com";
         var password = "Test@12345";
+        var phone = $"09{count:D8}";
 
         if (role == UserRoleEnum.Admin)
         {
@@ -42,9 +44,14 @@ public static class AuthHelper
             {
                 Email = email,
                 Password = password,
-                FullName = "Test Admin"
+                FullName = "Test Admin",
+                Phone = phone
             });
-            registerResponse.EnsureSuccessStatusCode();
+            if (!registerResponse.IsSuccessStatusCode)
+            {
+                var body = await registerResponse.Content.ReadAsStringAsync();
+                throw new HttpRequestException($"Admin registration failed with status {registerResponse.StatusCode}. Response: {body}");
+            }
 
             using var scope = fixture.Services.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<OrderHubDbContext>();
@@ -66,9 +73,14 @@ public static class AuthHelper
         {
             Email = email,
             Password = password,
-            FullName = "Test Customer"
+            FullName = "Test Customer",
+            Phone = phone
         });
-        response.EnsureSuccessStatusCode();
+        if (!response.IsSuccessStatusCode)
+        {
+            var body = await response.Content.ReadAsStringAsync();
+            throw new HttpRequestException($"Registration failed with status {response.StatusCode}. Response: {body}");
+        }
         return (await response.Content.ReadFromJsonAsync<AuthResponse>())!;
     }
 }

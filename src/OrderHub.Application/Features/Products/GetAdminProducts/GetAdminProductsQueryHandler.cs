@@ -23,13 +23,14 @@ public sealed class GetAdminProductsQueryHandler(
         var cacheKey = CacheKeys.AdminProducts.List(
             version, request.Page, request.PageSize, request.Category,
             request.MinPrice, request.MaxPrice, request.Search, request.IsActive,
+            request.InStock,
             request.SortBy, request.SortOrder);
 
         var cached = await stampedeGuard.GetOrCreateAsync(cache, cacheKey, async entry =>
         {
             var (items, totalCount) = await productRepository.GetFilteredAsync(
                 request.Category, request.MinPrice, request.MaxPrice,
-                request.Search, request.IsActive,
+                request.Search, request.IsActive, request.InStock,
                 request.SortBy, request.SortOrder,
                 request.Page, request.PageSize,
                 cancellationToken);

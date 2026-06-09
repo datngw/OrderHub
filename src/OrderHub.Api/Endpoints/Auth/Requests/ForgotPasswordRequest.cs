@@ -1,6 +1,3 @@
 namespace OrderHub.Api.Endpoints.Auth.Requests;
 
-public record ForgotPasswordRequest(
-    string Email,
-    string Code,
-    string NewPassword);
+public record ForgotPasswordRequest(string Email);

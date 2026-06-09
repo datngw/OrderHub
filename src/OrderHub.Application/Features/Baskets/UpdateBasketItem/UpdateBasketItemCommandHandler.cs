@@ -31,6 +31,9 @@ public sealed class UpdateBasketItemCommandHandler(
         if (product is null)
             return Result<BasketResponse>.Failure(BasketErrors.ProductNotFound(request.ProductId));
 
+        if (product.Stock < request.Quantity)
+            return Result<BasketResponse>.Failure(BasketErrors.InsufficientStock(request.Quantity, product.Stock));
+
         item.Quantity = request.Quantity;
         item.UnitPrice = product.Price;
         item.ProductName = product.Name;

@@ -5,7 +5,16 @@ public interface IOrderRepository
     Task<Order?> GetByIdAsync(Guid id, CancellationToken ct);
     Task<Order?> GetByIdForUpdateAsync(Guid id, CancellationToken ct);
     Task<(List<Order> Items, int TotalCount)> GetByUserIdAsync(
-        Guid userId, int page, int pageSize, CancellationToken ct);
+        Guid userId, int page, int pageSize,
+        string? status, DateTime? fromDate, DateTime? toDate,
+        string? sortBy, string? sortOrder,
+        CancellationToken ct);
+    Task<(List<Order> Items, int TotalCount)> GetAllAsync(
+        int page, int pageSize,
+        string? status, string? search,
+        DateTime? fromDate, DateTime? toDate,
+        string? sortBy, string? sortOrder,
+        CancellationToken ct);
     Task<List<TopProductRevenue>> GetTopProductsByRevenueAsync(
         DateTime? from, DateTime? to, int top, CancellationToken ct);
     Task<List<RevenueByDay>> GetRevenueByDayAsync(

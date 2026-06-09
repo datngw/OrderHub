@@ -164,7 +164,7 @@ public class ProductQueryPerformanceTests(IntegrationTestFixture fixture) : IAsy
         await conn.OpenAsync();
 
         await using var writer = conn.BeginBinaryImport(
-            @"COPY ""Products"" (""Id"", ""SKU"", ""Name"", ""Description"", ""Price"", ""Stock"", ""Category"", ""IsActive"", ""CreatedAt"") FROM STDIN (FORMAT BINARY)");
+            @"COPY ""Products"" (""Id"", ""SKU"", ""Name"", ""Description"", ""Price"", ""Stock"", ""Category"", ""IsActive"", ""CreatedAt"", ""GalleryImageUrls"") FROM STDIN (FORMAT BINARY)");
 
         var baseDate = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Unspecified);
         var random = new Random(42);
@@ -181,6 +181,7 @@ public class ProductQueryPerformanceTests(IntegrationTestFixture fixture) : IAsy
             writer.Write(Categories[i % Categories.Length], NpgsqlDbType.Varchar);
             writer.Write(true, NpgsqlDbType.Boolean);
             writer.Write(baseDate.AddSeconds(i), NpgsqlDbType.Timestamp);
+            writer.Write(Array.Empty<string>(), NpgsqlDbType.Array | NpgsqlDbType.Text);
         }
 
         await writer.CompleteAsync();

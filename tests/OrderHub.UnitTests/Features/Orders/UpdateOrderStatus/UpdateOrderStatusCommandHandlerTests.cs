@@ -55,7 +55,7 @@ public class UpdateOrderStatusCommandHandlerTests
             .Setup(r => r.GetByIdForUpdateAsync(order.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(order);
 
-        var command = new UpdateOrderStatusCommand(order.Id, OrderStatusEnum.Confirmed);
+        var command = new UpdateOrderStatusCommand(order.Id, "Confirmed");
 
         // Act
         var result = await _handler.Handle(command, CancellationToken.None);
@@ -82,7 +82,7 @@ public class UpdateOrderStatusCommandHandlerTests
             .Setup(r => r.GetByIdForUpdateAsync(order.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(order);
 
-        var command = new UpdateOrderStatusCommand(order.Id, OrderStatusEnum.Shipped);
+        var command = new UpdateOrderStatusCommand(order.Id, "Shipped");
 
         // Act
         var result = await _handler.Handle(command, CancellationToken.None);
@@ -109,7 +109,7 @@ public class UpdateOrderStatusCommandHandlerTests
             .Setup(r => r.GetByIdForUpdateAsync(order.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(order);
 
-        var command = new UpdateOrderStatusCommand(order.Id, OrderStatusEnum.Delivered);
+        var command = new UpdateOrderStatusCommand(order.Id, "Delivered");
 
         // Act
         var result = await _handler.Handle(command, CancellationToken.None);
@@ -129,7 +129,7 @@ public class UpdateOrderStatusCommandHandlerTests
             .Setup(r => r.GetByIdForUpdateAsync(orderId, It.IsAny<CancellationToken>()))
             .ReturnsAsync((Order?)null);
 
-        var command = new UpdateOrderStatusCommand(orderId, OrderStatusEnum.Confirmed);
+        var command = new UpdateOrderStatusCommand(orderId, "Confirmed");
 
         // Act
         var result = await _handler.Handle(command, CancellationToken.None);
@@ -156,7 +156,7 @@ public class UpdateOrderStatusCommandHandlerTests
             .Setup(r => r.GetByIdForUpdateAsync(order.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(order);
 
-        var command = new UpdateOrderStatusCommand(order.Id, OrderStatusEnum.Confirmed);
+        var command = new UpdateOrderStatusCommand(order.Id, "Confirmed");
 
         // Act
         var result = await _handler.Handle(command, CancellationToken.None);
@@ -184,7 +184,7 @@ public class UpdateOrderStatusCommandHandlerTests
             .ReturnsAsync(order);
 
         // Pending → Shipped is invalid (should go Pending → Confirmed)
-        var command = new UpdateOrderStatusCommand(order.Id, OrderStatusEnum.Shipped);
+        var command = new UpdateOrderStatusCommand(order.Id, "Shipped");
 
         // Act
         var result = await _handler.Handle(command, CancellationToken.None);
@@ -211,7 +211,7 @@ public class UpdateOrderStatusCommandHandlerTests
             .Setup(r => r.GetByIdForUpdateAsync(order.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(order);
 
-        var command = new UpdateOrderStatusCommand(order.Id, OrderStatusEnum.Pending);
+        var command = new UpdateOrderStatusCommand(order.Id, "Pending");
 
         // Act
         var result = await _handler.Handle(command, CancellationToken.None);
@@ -238,7 +238,7 @@ public class UpdateOrderStatusCommandHandlerTests
             .Setup(r => r.GetByIdForUpdateAsync(order.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(order);
 
-        var command = new UpdateOrderStatusCommand(order.Id, OrderStatusEnum.Pending);
+        var command = new UpdateOrderStatusCommand(order.Id, "Pending");
 
         // Act
         var result = await _handler.Handle(command, CancellationToken.None);

@@ -25,6 +25,9 @@ public sealed class UpdateOrderStatusCommandHandler(
 
     public async Task<Result> Handle(UpdateOrderStatusCommand request, CancellationToken cancellationToken)
     {
+        if (!Enum.TryParse<OrderStatusEnum>(request.NewStatus, ignoreCase: true, out var newStatus))
+            return Result.Failure(OrderErrors.InvalidStatusTransition(default, newStatus));
+
         return await unitOfWork.ExecuteInTransactionAsync(async ct =>
         {
             var order = await orderRepository.GetByIdForUpdateAsync(request.OrderId, ct);
@@ -36,18 +39,18 @@ public sealed class UpdateOrderStatusCommandHandler(
                 return Result.Failure(OrderErrors.AlreadyCancelled);
 
             if (!AllowedTransitions.TryGetValue(order.Status, out var expectedNext))
-                return Result.Failure(OrderErrors.InvalidStatusTransition(order.Status, request.NewStatus));
+                return Result.Failure(OrderErrors.InvalidStatusTransition(order.Status, newStatus));
 
-            if (request.NewStatus != expectedNext)
-                return Result.Failure(OrderErrors.InvalidStatusTransition(order.Status, request.NewStatus));
+            if (newStatus != expectedNext)
+                return Result.Failure(OrderErrors.InvalidStatusTransition(order.Status, newStatus));
 
             var previousStatus = order.Status;
-            order.Status = request.NewStatus;
+            order.Status = newStatus;
 
             cache.InvalidateReports();
 
             logger.LogInformation("Order {OrderId} status updated from {PreviousStatus} to {NewStatus}",
-                request.OrderId, previousStatus, request.NewStatus);
+                request.OrderId, previousStatus, newStatus);
 
             return Result.Success();
         }, cancellationToken);

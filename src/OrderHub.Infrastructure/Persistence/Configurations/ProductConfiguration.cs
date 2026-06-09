@@ -32,6 +32,12 @@ public class ProductConfiguration : IEntityTypeConfiguration<Product>
             .IsRequired()
             .HasMaxLength(ProductConstraints.CategoryMaxLength);
 
+        builder.Property(p => p.MainImageUrl)
+            .HasMaxLength(ProductConstraints.ImageUrlMaxLength);
+
+        builder.Property(p => p.GalleryImageUrls)
+            .HasColumnType("text[]");
+
         builder.Property(p => p.IsActive)
             .HasDefaultValue(true)
             .IsRequired();

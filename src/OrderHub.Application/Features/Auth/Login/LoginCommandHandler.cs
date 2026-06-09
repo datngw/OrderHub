@@ -42,6 +42,15 @@ public sealed class LoginCommandHandler(
 
         logger.LogInformation("User {Email} logged in successfully", user.Email);
 
-        return Result<AuthResponse>.Success(user.Adapt<AuthResponse>() with { AccessToken = accessToken, RefreshToken = refreshToken.Token });
+        var accessTokenExpiresAt = clock.UtcNow.AddMinutes(_jwtOptions.AccessTokenMinutes);
+        var refreshTokenExpiresAt = clock.UtcNow.AddDays(_jwtOptions.RefreshTokenDays);
+
+        return Result<AuthResponse>.Success(user.Adapt<AuthResponse>() with
+        {
+            AccessToken = accessToken,
+            RefreshToken = refreshToken.Token,
+            AccessTokenExpiresAt = accessTokenExpiresAt,
+            RefreshTokenExpiresAt = refreshTokenExpiresAt,
+        });
     }
 }

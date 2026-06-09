@@ -10,6 +10,8 @@ public sealed class AuthMappingConfig : IRegister
         config.NewConfig<User, AuthResponse>()
             .Map(dest => dest.Role, src => src.Role.ToString())
             .Map(dest => dest.AccessToken, src => string.Empty)
-            .Map(dest => dest.RefreshToken, src => string.Empty);
+            .Map(dest => dest.RefreshToken, src => string.Empty)
+            .Map(dest => dest.AccessTokenExpiresAt, src => DateTimeOffset.MinValue)
+            .Map(dest => dest.RefreshTokenExpiresAt, src => DateTimeOffset.MinValue);
     }
 }

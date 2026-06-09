@@ -50,7 +50,7 @@ public class UpdateProductCommandHandlerTests
         };
 
         var command = new UpdateProductCommand(
-            productId, "New Name", "New Description", 19.99m, 75, "Gadgets", true);
+            productId, "New Name", "New Description", 19.99m, 75, "Gadgets", null, null, true);
 
         _productRepositoryMock
             .Setup(r => r.GetByIdAsync(productId, It.IsAny<CancellationToken>()))
@@ -83,7 +83,7 @@ public class UpdateProductCommandHandlerTests
         // Arrange
         var productId = Guid.NewGuid();
         var command = new UpdateProductCommand(
-            productId, "New Name", "New Description", 19.99m, 75, "Gadgets", true);
+            productId, "New Name", "New Description", 19.99m, 75, "Gadgets", null, null, true);
 
         _productRepositoryMock
             .Setup(r => r.GetByIdAsync(productId, It.IsAny<CancellationToken>()))

@@ -14,7 +14,8 @@ public class RegisterCommandValidatorTests
         var command = new RegisterCommand(
             "user@example.com",
             "Password1!",
-            "John Doe");
+            "John Doe",
+            "0901234567");
 
         var result = await _validator.TestValidateAsync(command);
         result.ShouldNotHaveAnyValidationErrors();
@@ -25,7 +26,8 @@ public class RegisterCommandValidatorTests
     [InlineData(null)]
     public async Task Validate_WithEmptyEmail_ShouldHaveError(string email)
     {
-        var command = new RegisterCommand(email, "Password1!", "John Doe");
+        var command = new RegisterCommand(email, "Password1!", "John Doe",
+            null);
         var result = await _validator.TestValidateAsync(command);
         result.ShouldHaveValidationErrorFor(x => x.Email);
     }
@@ -33,7 +35,8 @@ public class RegisterCommandValidatorTests
     [Fact]
     public async Task Validate_WithInvalidEmailFormat_ShouldHaveError()
     {
-        var command = new RegisterCommand("not-an-email", "Password1!", "John Doe");
+        var command = new RegisterCommand("not-an-email", "Password1!", "John Doe",
+            null);
         var result = await _validator.TestValidateAsync(command);
         result.ShouldHaveValidationErrorFor(x => x.Email);
     }
@@ -43,7 +46,8 @@ public class RegisterCommandValidatorTests
     [InlineData(null)]
     public async Task Validate_WithEmptyPassword_ShouldHaveError(string password)
     {
-        var command = new RegisterCommand("user@example.com", password, "John Doe");
+        var command = new RegisterCommand("user@example.com", password, "John Doe",
+            null);
         var result = await _validator.TestValidateAsync(command);
         result.ShouldHaveValidationErrorFor(x => x.Password);
     }
@@ -51,7 +55,8 @@ public class RegisterCommandValidatorTests
     [Fact]
     public async Task Validate_WithTooShortPassword_ShouldHaveError()
     {
-        var command = new RegisterCommand("user@example.com", "Pass1!a", "John Doe");
+        var command = new RegisterCommand("user@example.com", "Pass1!a", "John Doe",
+            null);
         var result = await _validator.TestValidateAsync(command);
         result.ShouldHaveValidationErrorFor(x => x.Password);
     }
@@ -59,7 +64,8 @@ public class RegisterCommandValidatorTests
     [Fact]
     public async Task Validate_WithNoUppercasePassword_ShouldHaveError()
     {
-        var command = new RegisterCommand("user@example.com", "password1!", "John Doe");
+        var command = new RegisterCommand("user@example.com", "password1!", "John Doe",
+            null);
         var result = await _validator.TestValidateAsync(command);
         result.ShouldHaveValidationErrorFor(x => x.Password);
     }
@@ -67,7 +73,8 @@ public class RegisterCommandValidatorTests
     [Fact]
     public async Task Validate_WithNoLowercasePassword_ShouldHaveError()
     {
-        var command = new RegisterCommand("user@example.com", "PASSWORD1!", "John Doe");
+        var command = new RegisterCommand("user@example.com", "PASSWORD1!", "John Doe",
+            null);
         var result = await _validator.TestValidateAsync(command);
         result.ShouldHaveValidationErrorFor(x => x.Password);
     }
@@ -75,7 +82,8 @@ public class RegisterCommandValidatorTests
     [Fact]
     public async Task Validate_WithNoDigitPassword_ShouldHaveError()
     {
-        var command = new RegisterCommand("user@example.com", "Password!!", "John Doe");
+        var command = new RegisterCommand("user@example.com", "Password!!", "John Doe",
+            null);
         var result = await _validator.TestValidateAsync(command);
         result.ShouldHaveValidationErrorFor(x => x.Password);
     }
@@ -83,7 +91,8 @@ public class RegisterCommandValidatorTests
     [Fact]
     public async Task Validate_WithNoSpecialCharPassword_ShouldHaveError()
     {
-        var command = new RegisterCommand("user@example.com", "Password12", "John Doe");
+        var command = new RegisterCommand("user@example.com", "Password12", "John Doe",
+            null);
         var result = await _validator.TestValidateAsync(command);
         result.ShouldHaveValidationErrorFor(x => x.Password);
     }
@@ -93,7 +102,7 @@ public class RegisterCommandValidatorTests
     [InlineData(null)]
     public async Task Validate_WithEmptyFullName_ShouldHaveError(string fullName)
     {
-        var command = new RegisterCommand("user@example.com", "Password1!", fullName);
+        var command = new RegisterCommand("user@example.com", "Password1!", fullName, null);
         var result = await _validator.TestValidateAsync(command);
         result.ShouldHaveValidationErrorFor(x => x.FullName);
     }
@@ -101,8 +110,26 @@ public class RegisterCommandValidatorTests
     [Fact]
     public async Task Validate_WithTooLongFullName_ShouldHaveError()
     {
-        var command = new RegisterCommand("user@example.com", "Password1!", new string('a', 201));
+        var command = new RegisterCommand("user@example.com", "Password1!", new string('a', 201), null);
         var result = await _validator.TestValidateAsync(command);
         result.ShouldHaveValidationErrorFor(x => x.FullName);
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData(null)]
+    public async Task Validate_WithEmptyPhone_ShouldHaveError(string phone)
+    {
+        var command = new RegisterCommand("user@example.com", "Password1!", "John Doe", phone);
+        var result = await _validator.TestValidateAsync(command);
+        result.ShouldHaveValidationErrorFor(x => x.Phone);
+    }
+
+    [Fact]
+    public async Task Validate_WithInvalidPhone_ShouldHaveError()
+    {
+        var command = new RegisterCommand("user@example.com", "Password1!", "John Doe", "12345");
+        var result = await _validator.TestValidateAsync(command);
+        result.ShouldHaveValidationErrorFor(x => x.Phone);
     }
 }

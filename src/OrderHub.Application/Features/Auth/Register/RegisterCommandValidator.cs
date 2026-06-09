@@ -14,5 +14,11 @@ public sealed class RegisterCommandValidator : AbstractValidator<RegisterCommand
             .Matches(@"[0-9]").WithMessage("Password must contain at least one digit.")
             .Matches(@"[^a-zA-Z0-9]").WithMessage("Password must contain at least one special character.");
         RuleFor(x => x.FullName).NotEmpty().WithMessage("Full name is required.").MaximumLength(UserConstraints.FullNameMaxLength).WithMessage($"Full name must not exceed {UserConstraints.FullNameMaxLength} characters.");
+        RuleFor(x => x.Phone)
+            .NotEmpty().WithMessage("Phone number is required.")
+            .MaximumLength(UserConstraints.PhoneMaxLength)
+            .WithMessage($"Phone must not exceed {UserConstraints.PhoneMaxLength} characters.")
+            .Matches(@"^(\+84|84|0)(3[2-9]|5[6|8|9]|7[0|6-9]|8[1-9]|9[0-9])[0-9]{7}$")
+            .WithMessage("Phone number must be a valid Vietnamese phone number.");
     }
 }

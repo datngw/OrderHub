@@ -27,6 +27,7 @@ public class ProductRepository(OrderHubDbContext context) : IProductRepository
         decimal? maxPrice,
         string? search,
         bool? isActive,
+        bool? inStock,
         string? sortBy,
         string? sortOrder,
         int page,
@@ -45,6 +46,10 @@ public class ProductRepository(OrderHubDbContext context) : IProductRepository
             query = query.Where(p => EF.Functions.ILike(p.Name, $"%{search}%"));
         if (isActive.HasValue)
             query = query.Where(p => p.IsActive == isActive.Value);
+        if (inStock.HasValue)
+            query = inStock.Value
+                ? query.Where(p => p.Stock > 0)
+                : query.Where(p => p.Stock == 0);
 
         query = ApplySorting(query, sortBy, sortOrder);
 
@@ -72,6 +77,33 @@ public class ProductRepository(OrderHubDbContext context) : IProductRepository
             .FromSqlInterpolated(
                 $@"SELECT * FROM ""Products"" WHERE ""Id"" = ANY({ids}) ORDER BY ""Id"" FOR UPDATE")
             .ToListAsync(ct);
+    }
+
+    public async Task<List<Product>> GetByIdsAsync(IEnumerable<Guid> productIds, CancellationToken ct)
+    {
+        var ids = productIds.Distinct().ToList();
+        return await context.Products
+            .AsNoTracking()
+            .Where(p => ids.Contains(p.Id))
+            .ToListAsync(ct);
+    }
+
+    /// <inheritdoc/>
+    public async Task<int> TryDecrementStockAsync(Guid productId, int quantity, CancellationToken ct)
+    {
+        // Single atomic UPDATE: only succeeds when product is available AND stock is sufficient.
+        // No separate SELECT needed — the WHERE clause acts as the guard.
+        // Returns 1 on success, 0 on failure (not found / deleted / inactive / insufficient stock).
+        return await context.Database.ExecuteSqlInterpolatedAsync(
+            $"""
+            UPDATE "Products"
+            SET    "Stock" = "Stock" - {quantity}
+            WHERE  "Id"      = {productId}
+              AND  "IsDeleted" = FALSE
+              AND  "IsActive"  = TRUE
+              AND  "Stock"    >= {quantity}
+            """,
+            ct);
     }
 
     private static IQueryable<Product> ApplySorting(IQueryable<Product> query, string? sortBy, string? sortOrder)

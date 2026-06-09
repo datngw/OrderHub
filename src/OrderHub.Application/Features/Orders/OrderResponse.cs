@@ -5,6 +5,14 @@ public record OrderResponse(
     Guid UserId,
     string Status,
     decimal TotalAmount,
+    string Email,
+    string FullName,
+    string Phone,
+    string Province,
+    string District,
+    string Ward,
+    string StreetAddress,
     List<OrderItemResponse> Items,
     DateTime CreatedAt,
-    DateTime? UpdatedAt);
+    DateTime? UpdatedAt,
+    string Note);

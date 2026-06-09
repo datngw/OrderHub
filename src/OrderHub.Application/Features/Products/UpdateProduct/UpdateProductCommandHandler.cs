@@ -27,6 +27,12 @@ public sealed class UpdateProductCommandHandler(
 
         request.Adapt(product);
 
+        if (request.MainImageUrl is not null)
+            product.MainImageUrl = request.MainImageUrl;
+
+        if (request.GalleryImageUrls is not null)
+            product.GalleryImageUrls = request.GalleryImageUrls;
+
         await unitOfWork.SaveChangesAsync(cancellationToken);
 
         cache.InvalidateProducts(request.Id);

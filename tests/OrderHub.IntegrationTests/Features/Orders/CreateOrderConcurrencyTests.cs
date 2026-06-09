@@ -33,9 +33,21 @@ public class CreateOrderConcurrencyTests(IntegrationTestFixture fixture) : IAsyn
             clients.Add(client);
         }
 
+        var checkoutPayload = new
+        {
+            Note          = (string?)null,
+            Email         = "buyer@test.com",
+            FullName      = "Nguyen Van A",
+            Phone         = "0901234567",
+            Province      = "Hà Nội",
+            District      = "Ba Đình",
+            Ward          = "Phúc Xá",
+            StreetAddress = "123 Test Street"
+        };
+
         // Act — all 20 users checkout concurrently
         var responses = await Task.WhenAll(clients.Select(client =>
-            client.PostAsJsonAsync("/api/v1/orders", new { Note = (string?)null })));
+            client.PostAsJsonAsync("/api/v1/orders", checkoutPayload)));
 
         // Assert — count HTTP status codes
         var successes = responses.Count(r => r.StatusCode == HttpStatusCode.Created);

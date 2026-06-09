@@ -25,7 +25,7 @@ public sealed class GetProductsQueryHandler(IProductRepository productRepository
         {
             var (items, totalCount) = await productRepository.GetFilteredAsync(
                 request.Category, request.MinPrice, request.MaxPrice,
-                request.Search, isActive: true,
+                request.Search, isActive: true, inStock: null,
                 request.SortBy, request.SortOrder,
                 request.Page, request.PageSize,
                 cancellationToken);

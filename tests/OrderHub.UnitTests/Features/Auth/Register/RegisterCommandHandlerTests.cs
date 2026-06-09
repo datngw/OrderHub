@@ -55,7 +55,7 @@ public class RegisterCommandHandlerTests
     public async Task Handle_NewUser_ReturnsSuccessWithTokens()
     {
         // Arrange
-        var command = new RegisterCommand("test@example.com", "P@ssw0rd!", "Test User");
+        var command = new RegisterCommand("test@example.com", "P@ssw0rd!", "Test User", null);
 
         _userRepository
             .Setup(r => r.ExistsByEmailAsync("test@example.com", It.IsAny<CancellationToken>()))
@@ -101,7 +101,7 @@ public class RegisterCommandHandlerTests
     public async Task Handle_EmailAlreadyExists_ReturnsFailure()
     {
         // Arrange
-        var command = new RegisterCommand("existing@example.com", "P@ssw0rd!", "Test User");
+        var command = new RegisterCommand("existing@example.com", "P@ssw0rd!", "Test User", null);
 
         _userRepository
             .Setup(r => r.ExistsByEmailAsync("existing@example.com", It.IsAny<CancellationToken>()))
@@ -122,7 +122,7 @@ public class RegisterCommandHandlerTests
     public async Task Handle_DuplicateEmailOnSave_ReturnsFailure()
     {
         // Arrange
-        var command = new RegisterCommand("test@example.com", "P@ssw0rd!", "Test User");
+        var command = new RegisterCommand("test@example.com", "P@ssw0rd!", "Test User", null);
 
         _userRepository
             .Setup(r => r.ExistsByEmailAsync("test@example.com", It.IsAny<CancellationToken>()))

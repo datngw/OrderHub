@@ -17,7 +17,10 @@ public sealed class GetMyOrdersQueryHandler(
     public async Task<Result<PagedResult<OrderResponse>>> Handle(GetMyOrdersQuery request, CancellationToken cancellationToken)
     {
         var (items, totalCount) = await orderRepository.GetByUserIdAsync(
-            userContext.UserId, request.Page, request.PageSize, cancellationToken);
+            userContext.UserId, request.Page, request.PageSize,
+            request.Status, request.FromDate, request.ToDate,
+            request.SortBy, request.SortOrder,
+            cancellationToken);
 
         return Result<PagedResult<OrderResponse>>.Success(new PagedResult<OrderResponse>
         {

@@ -60,7 +60,7 @@ public class GetAdminProductsQueryHandlerTests
         _productRepositoryMock
             .Setup(r => r.GetFilteredAsync(
                 It.IsAny<string?>(), It.IsAny<decimal?>(), It.IsAny<decimal?>(),
-                It.IsAny<string?>(), It.IsAny<bool?>(),
+                It.IsAny<string?>(), It.IsAny<bool?>(), It.IsAny<bool?>(),
                 It.IsAny<string?>(), It.IsAny<string?>(),
                 It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((products, totalCount));
@@ -101,7 +101,7 @@ public class GetAdminProductsQueryHandlerTests
         _productRepositoryMock
             .Setup(r => r.GetFilteredAsync(
                 It.IsAny<string?>(), It.IsAny<decimal?>(), It.IsAny<decimal?>(),
-                It.IsAny<string?>(), true,
+                It.IsAny<string?>(), true, It.IsAny<bool?>(),
                 It.IsAny<string?>(), It.IsAny<string?>(),
                 It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((products, totalCount));
@@ -142,7 +142,7 @@ public class GetAdminProductsQueryHandlerTests
         _productRepositoryMock
             .Setup(r => r.GetFilteredAsync(
                 It.IsAny<string?>(), It.IsAny<decimal?>(), It.IsAny<decimal?>(),
-                It.IsAny<string?>(), false,
+                It.IsAny<string?>(), false, It.IsAny<bool?>(),
                 It.IsAny<string?>(), It.IsAny<string?>(),
                 It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((products, totalCount));

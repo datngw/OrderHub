@@ -97,7 +97,7 @@ public sealed class ProductEndpoints : IEndpointGroup
     private static async Task<IResult> HandleCreateProduct(
         [FromBody] CreateProductRequest request, IMediator mediator, CancellationToken ct)
     {
-        var command = new CreateProductCommand(request.SKU, request.Name, request.Description, request.Price, request.Stock, request.Category);
+        var command = new CreateProductCommand(request.SKU, request.Name, request.Description, request.Price, request.Stock, request.Category, request.MainImageUrl, request.GalleryImageUrls, request.IsActive);
         var result = await mediator.Send(command, ct);
         return Results.Created($"/api/v1/products/{result.Value.Id}", result.Value);
     }
@@ -105,7 +105,7 @@ public sealed class ProductEndpoints : IEndpointGroup
     private static async Task<IResult> HandleUpdateProduct(
         Guid id, [FromBody] UpdateProductRequest request, IMediator mediator, CancellationToken ct)
     {
-        var command = new UpdateProductCommand(id, request.Name, request.Description, request.Price, request.Stock, request.Category, request.IsActive);
+        var command = new UpdateProductCommand(id, request.Name, request.Description, request.Price, request.Stock, request.Category, request.MainImageUrl, request.GalleryImageUrls, request.IsActive);
         var result = await mediator.Send(command, ct);
         return Results.Ok(result.Value);
     }

@@ -6,4 +6,7 @@ public record CreateProductRequest(
     string Description,
     decimal Price,
     int Stock,
-    string Category);
+    string Category,
+    string? MainImageUrl,
+    List<string>? GalleryImageUrls,
+    bool IsActive = true);

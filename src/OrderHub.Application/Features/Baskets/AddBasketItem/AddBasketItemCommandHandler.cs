@@ -34,10 +34,19 @@ public sealed class AddBasketItemCommandHandler(
         {
             var newQuantity = existingItem.Quantity + request.Quantity;
 
+            if (newQuantity > 99)
+                return Result<BasketResponse>.Failure(BasketErrors.QuantityExceedsLimit);
+
+            if (newQuantity > product.Stock)
+                return Result<BasketResponse>.Failure(BasketErrors.InsufficientStock(newQuantity, product.Stock));
+
             existingItem.Quantity = newQuantity;
         }
         else
         {
+            if (request.Quantity > product.Stock)
+                return Result<BasketResponse>.Failure(BasketErrors.InsufficientStock(request.Quantity, product.Stock));
+
             basket.Items.Add(new BasketItem
             {
                 ProductId = product.Id,

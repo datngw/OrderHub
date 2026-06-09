@@ -7,6 +7,6 @@ namespace OrderHub.Application.Features.Products.GetAdminProducts;
 public record GetAdminProductsQuery(
     int Page = 1, int PageSize = 20,
     string? Category = null, decimal? MinPrice = null, decimal? MaxPrice = null,
-    string? Search = null, bool? IsActive = null,
+    string? Search = null, bool? IsActive = null, bool? InStock = null,
     string? SortBy = "CreatedAt", string? SortOrder = "desc")
     : IQuery<PagedResult<ProductResponse>>;

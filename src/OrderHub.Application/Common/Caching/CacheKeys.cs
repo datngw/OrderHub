@@ -24,8 +24,9 @@ public static class CacheKeys
     {
         public static string List(string version, int page, int pageSize, string? category,
             decimal? minPrice, decimal? maxPrice, string? search, bool? isActive,
+            bool? inStock,
             string? sortBy, string? sortOrder) =>
-            $"admin:products:list:v{version}:{page}:{pageSize}:{category}:{minPrice}:{maxPrice}:{search}:{isActive}:{sortBy}:{sortOrder}";
+            $"admin:products:list:v{version}:{page}:{pageSize}:{category}:{minPrice}:{maxPrice}:{search}:{isActive}:{inStock}:{sortBy}:{sortOrder}";
     }
 
     public static class Reports

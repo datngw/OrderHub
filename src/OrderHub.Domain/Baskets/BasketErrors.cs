@@ -18,4 +18,10 @@ public static class BasketErrors
 
     public static Error ProductUnavailable(Guid productId) =>
         Error.Problem("Baskets.ProductUnavailable", $"Product with ID '{productId}' is not available.");
+
+    public static Error QuantityExceedsLimit =>
+        Error.Problem("Baskets.QuantityExceedsLimit", "Tổng số lượng mỗi sản phẩm không được vượt quá 99.");
+
+    public static Error InsufficientStock(int requested, int available) =>
+        Error.Problem("Baskets.InsufficientStock", $"Insufficient stock. Requested: {requested}, Available: {available}.");
 }

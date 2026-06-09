@@ -12,4 +12,6 @@ public class Product : BaseEntity, ISoftDeletable
     public decimal Price { get; set; }
     public int Stock { get; set; }
     public string Category { get; set; } = string.Empty;
+    public string? MainImageUrl { get; set; }
+    public List<string> GalleryImageUrls { get; set; } = [];
 }

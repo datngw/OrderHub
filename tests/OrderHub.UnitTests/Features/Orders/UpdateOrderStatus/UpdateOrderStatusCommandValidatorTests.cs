@@ -12,7 +12,7 @@ public class UpdateOrderStatusCommandValidatorTests
     [Fact]
     public async Task Validate_WithConfirmedStatus_ShouldHaveNoErrors()
     {
-        var command = new UpdateOrderStatusCommand(Guid.NewGuid(), OrderStatusEnum.Confirmed);
+        var command = new UpdateOrderStatusCommand(Guid.NewGuid(), "Confirmed");
         var result = await _validator.TestValidateAsync(command);
         result.ShouldNotHaveAnyValidationErrors();
     }
@@ -20,7 +20,7 @@ public class UpdateOrderStatusCommandValidatorTests
     [Fact]
     public async Task Validate_WithShippedStatus_ShouldHaveNoErrors()
     {
-        var command = new UpdateOrderStatusCommand(Guid.NewGuid(), OrderStatusEnum.Shipped);
+        var command = new UpdateOrderStatusCommand(Guid.NewGuid(), "Shipped");
         var result = await _validator.TestValidateAsync(command);
         result.ShouldNotHaveAnyValidationErrors();
     }
@@ -28,7 +28,7 @@ public class UpdateOrderStatusCommandValidatorTests
     [Fact]
     public async Task Validate_WithDeliveredStatus_ShouldHaveNoErrors()
     {
-        var command = new UpdateOrderStatusCommand(Guid.NewGuid(), OrderStatusEnum.Delivered);
+        var command = new UpdateOrderStatusCommand(Guid.NewGuid(), "Delivered");
         var result = await _validator.TestValidateAsync(command);
         result.ShouldNotHaveAnyValidationErrors();
     }
@@ -36,7 +36,7 @@ public class UpdateOrderStatusCommandValidatorTests
     [Fact]
     public async Task Validate_WithEmptyOrderId_ShouldHaveError()
     {
-        var command = new UpdateOrderStatusCommand(Guid.Empty, OrderStatusEnum.Confirmed);
+        var command = new UpdateOrderStatusCommand(Guid.Empty, "Confirmed");
         var result = await _validator.TestValidateAsync(command);
         result.ShouldHaveValidationErrorFor(x => x.OrderId);
     }
@@ -44,7 +44,7 @@ public class UpdateOrderStatusCommandValidatorTests
     [Fact]
     public async Task Validate_WithPendingStatus_ShouldHaveError()
     {
-        var command = new UpdateOrderStatusCommand(Guid.NewGuid(), OrderStatusEnum.Pending);
+        var command = new UpdateOrderStatusCommand(Guid.NewGuid(), "Pending");
         var result = await _validator.TestValidateAsync(command);
         result.ShouldHaveValidationErrorFor(x => x.NewStatus);
     }
@@ -52,7 +52,7 @@ public class UpdateOrderStatusCommandValidatorTests
     [Fact]
     public async Task Validate_WithCancelledStatus_ShouldHaveError()
     {
-        var command = new UpdateOrderStatusCommand(Guid.NewGuid(), OrderStatusEnum.Cancelled);
+        var command = new UpdateOrderStatusCommand(Guid.NewGuid(), "Cancelled");
         var result = await _validator.TestValidateAsync(command);
         result.ShouldHaveValidationErrorFor(x => x.NewStatus);
     }

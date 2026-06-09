@@ -3,6 +3,7 @@ using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using OrderHub.Application.Common;
 using OrderHub.Application.Common.Caching;
+using OrderHub.Application.Common.Exceptions;
 using OrderHub.Application.Common.Messaging;
 using OrderHub.Application.Common.Persistence;
 using OrderHub.Application.Common.Security;
@@ -34,78 +35,102 @@ public sealed class CreateOrderCommandHandler(
 
         var productIds = basket.Items.Select(i => i.ProductId).Distinct().ToList();
 
-        logger.LogInformation("Creating order from basket for user {UserId} with {ItemCount} product(s)", userId, productIds.Count);
+        var products = await productRepository.GetByIdsAsync(productIds, cancellationToken);
+        var productMap = products.ToDictionary(p => p.Id);
 
-        return await unitOfWork.ExecuteInTransactionAsync(async ct =>
+        var errors = new List<Error>();
+        var itemSnapshots = new List<(BasketItem Item, Product Product)>();
+
+        foreach (var item in basket.Items)
         {
-            var lockedProducts = await productRepository.LockForUpdateAsync(productIds, ct);
-            var productMap = lockedProducts.ToDictionary(p => p.Id);
-
-            // Phase 1: Validate all items — no mutations
-            var errors = new List<Error>();
-            var validatedItems = new List<(Product Product, int Quantity)>();
-
-            foreach (var item in basket.Items)
+            if (!productMap.TryGetValue(item.ProductId, out var product))
             {
-                if (!productMap.TryGetValue(item.ProductId, out var product))
-                {
-                    errors.Add(OrderErrors.ProductNotFound(item.ProductId));
-                    continue;
-                }
-
-                if (product.IsDeleted)
-                {
-                    errors.Add(OrderErrors.ProductUnavailable(item.ProductId));
-                    continue;
-                }
-
-                if (product.Stock < item.Quantity)
-                {
-                    errors.Add(OrderErrors.InsufficientStock(product.Name, item.Quantity, product.Stock));
-                    continue;
-                }
-
-                validatedItems.Add((product, item.Quantity));
+                errors.Add(OrderErrors.ProductNotFound(item.ProductId));
+                continue;
             }
 
-            if (errors.Count > 0)
-                return Result<OrderResponse>.Failure(errors[0]);
-
-            // Phase 2: Mutate — deduct stock, create order items with price snapshot
-            var orderItems = new List<OrderItem>();
-            foreach (var (product, quantity) in validatedItems)
+            if (product.IsDeleted || !product.IsActive)
             {
-                product.Stock -= quantity;
-
-                orderItems.Add(new OrderItem
-                {
-                    ProductId = product.Id,
-                    Quantity = quantity,
-                    UnitPrice = product.Price
-                });
+                errors.Add(OrderErrors.ProductUnavailable(item.ProductId));
+                continue;
             }
 
-            var totalAmount = orderItems.Sum(i => i.UnitPrice * i.Quantity);
-
-            var order = new Order
+            if (product.Stock < item.Quantity)
             {
-                UserId = userId,
-                Status = OrderStatusEnum.Pending,
-                TotalAmount = totalAmount,
-                Items = orderItems,
-                Note = request.Note ?? string.Empty
-            };
+                errors.Add(OrderErrors.InsufficientStock(product.Name, item.Quantity, product.Stock));
+                continue;
+            }
 
-            orderRepository.Add(order);
+            itemSnapshots.Add((item, product));
+        }
 
-            // Clear basket after successful checkout
-            await basketRepository.RemoveAsync(userId, ct);
+        if (errors.Count > 0)
+            return Result<OrderResponse>.Failure(errors[0]);
 
-            cache.InvalidateReports();
+        try
+        {
+            return await unitOfWork.ExecuteInTransactionAsync(async ct =>
+            {
+                var orderItems = new List<OrderItem>();
 
-            logger.LogInformation("Order {OrderId} created for user {UserId} with total {TotalAmount}", order.Id, userId, totalAmount);
+                foreach (var (item, product) in itemSnapshots)
+                {
+                    var affected = await productRepository.TryDecrementStockAsync(item.ProductId, item.Quantity, ct);
 
-            return Result<OrderResponse>.Success(order.Adapt<OrderResponse>());
-        }, cancellationToken);
+                    if (affected == 0)
+                    {
+                        logger.LogWarning(
+                            "Atomic decrement failed for product {ProductId} (requested {Quantity}). " +
+                            "Stock may have been exhausted by a concurrent order.",
+                            item.ProductId, item.Quantity);
+
+                        throw new AppException(OrderErrors.InsufficientStock(product.Name, item.Quantity, available: 0));
+                    }
+
+                    orderItems.Add(new OrderItem
+                    {
+                        ProductId = product.Id,
+                        Quantity = item.Quantity,
+                        UnitPrice = product.Price,
+                    });
+                }
+
+                var totalAmount = orderItems.Sum(i => i.UnitPrice * i.Quantity);
+
+                var order = new Order
+                {
+                    UserId = userId,
+                    Status = OrderStatusEnum.Pending,
+                    TotalAmount = totalAmount,
+                    Items = orderItems,
+                    Note = request.Note ?? string.Empty,
+                    Email = request.Email,
+                    FullName = request.FullName,
+                    Phone = request.Phone,
+                    Province = request.Province,
+                    District = request.District,
+                    Ward = request.Ward,
+                    StreetAddress = request.StreetAddress,
+                };
+
+                orderRepository.Add(order);
+
+                await basketRepository.RemoveAsync(userId, ct);
+
+                // Invalidate product and report caches
+                cache.InvalidateProducts();
+                cache.InvalidateReports();
+
+                logger.LogInformation(
+                    "Order {OrderId} created for user {UserId} with total {TotalAmount}",
+                    order.Id, userId, totalAmount);
+
+                return Result<OrderResponse>.Success(order.Adapt<OrderResponse>());
+            }, cancellationToken);
+        }
+        catch (AppException ex)
+        {
+            return Result<OrderResponse>.Failure(ex.Error);
+        }
     }
 }

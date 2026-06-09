@@ -81,7 +81,7 @@ public class GetReportsTests(IntegrationTestFixture fixture) : IAsyncLifetime
             var order = new Order
             {
                 UserId = adminUser.Id,
-                Status = OrderStatusEnum.Confirmed,
+                Status = OrderStatusEnum.Delivered,
                 TotalAmount = 45.00m,
                 Items = new List<OrderItem>
                 {

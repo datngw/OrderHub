@@ -9,6 +9,7 @@ using OrderHub.Application.Features.Orders;
 using OrderHub.Application.Features.Orders.CancelOrder;
 using OrderHub.Application.Features.Orders.CreateOrder;
 using OrderHub.Application.Features.Orders.DeleteOrder;
+using OrderHub.Application.Features.Orders.GetOrders;
 using OrderHub.Application.Features.Orders.GetMyOrders;
 using OrderHub.Application.Features.Orders.GetOrderById;
 using OrderHub.Application.Features.Orders.UpdateOrderStatus;
@@ -37,6 +38,12 @@ public sealed class OrderEndpoints : IEndpointGroup
             .ProducesValidationProblem()
             .ProducesProblem(StatusCodes.Status404NotFound)
             .ProducesProblem(StatusCodes.Status400BadRequest);
+
+        group.MapGet("/", HandleGetOrders)
+            .WithName("GetOrders").WithSummary("Get all orders (Admin only)")
+            .HasApiVersion(new ApiVersion(1))
+            .Produces<PagedResult<OrderResponse>>()
+            .RequireAuthorization(AuthorizationPolicies.Policies.AdminOnly);
 
         group.MapGet("/me", HandleGetMyOrders)
             .WithName("GetMyOrders").WithSummary("Get current user's order history")
@@ -78,15 +85,42 @@ public sealed class OrderEndpoints : IEndpointGroup
     private static async Task<IResult> HandleCreateOrder(
         [FromBody] CreateOrderRequest? request, IMediator mediator, CancellationToken ct)
     {
-        var command = new CreateOrderCommand(request?.Note);
+        var command = new CreateOrderCommand(
+            request?.Note,
+            request!.Email,
+            request.FullName,
+            request.Phone,
+            request.Province,
+            request.District,
+            request.Ward,
+            request.StreetAddress);
         var result = await mediator.Send(command, ct);
         return Results.Created($"/api/v1/orders/{result.Value.Id}", result.Value);
     }
 
-    private static async Task<IResult> HandleGetMyOrders(
-        IMediator mediator, int page = 1, int pageSize = 20, CancellationToken ct = default)
+    private static async Task<IResult> HandleGetOrders(
+        IMediator mediator,
+        int page = 1, int pageSize = 20,
+        string? status = null, string? search = null,
+        DateTime? fromDate = null, DateTime? toDate = null,
+        string sortBy = "CreatedAt", string sortOrder = "desc",
+        CancellationToken ct = default)
     {
-        var result = await mediator.Send(new GetMyOrdersQuery(page, pageSize), ct);
+        var query = new GetOrdersQuery(page, pageSize, status, search, fromDate, toDate, sortBy, sortOrder);
+        var result = await mediator.Send(query, ct);
+        return Results.Ok(result.Value);
+    }
+
+    private static async Task<IResult> HandleGetMyOrders(
+        IMediator mediator,
+        int page = 1, int pageSize = 20,
+        string? status = null,
+        DateTime? fromDate = null, DateTime? toDate = null,
+        string sortBy = "CreatedAt", string sortOrder = "desc",
+        CancellationToken ct = default)
+    {
+        var query = new GetMyOrdersQuery(page, pageSize, status, fromDate, toDate, sortBy, sortOrder);
+        var result = await mediator.Send(query, ct);
         return Results.Ok(result.Value);
     }
 

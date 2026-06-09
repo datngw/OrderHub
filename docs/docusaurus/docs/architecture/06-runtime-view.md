@@ -75,7 +75,113 @@ sequenceDiagram
 
 ---
 
-## 6.2 Scenario 2: Authentication & Token Refresh (JWT Rotation)
+## 6.2 Scenario 2: Create Order with Concurrency Control (Atomic Decrement - V2)
+
+This workflow optimizes order creation under high concurrency. Instead of acquiring database row locks during the read phase (which blocks other concurrent transactions), it uses a lightweight read for initial validation, followed by a single atomic `UPDATE` statement that decreases the stock count directly in the database. 
+
+If any item's stock cannot be decremented (due to insufficient stock, product deletion, or inactivity), the atomic update fails (returning 0 rows affected), an `AppException` is thrown inside the transaction callback to trigger a transaction rollback, and the exception is caught to return a clean failure result.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Customer as Customer Client
+    participant API as OrderHub.Api<br/>(Kestrel)
+    participant Pipe as MediatR Pipeline<br/>(Behaviors)
+    participant Handler as CreateOrderCommandHandler
+    participant BasketRepo as BasketRepository
+    participant ProductRepo as ProductRepository
+    participant OrderRepo as OrderRepository
+    participant UOW as UnitOfWork
+    participant DB as PostgreSQL 16
+    participant Cache as IMemoryCache
+
+    Customer->>API: POST /api/v1/orders<br/>{ Note, Email, FullName, Phone, Province, District, Ward, StreetAddress }
+    API->>Pipe: Send CreateOrderCommand
+    Pipe->>Pipe: Validate Command DTO (ValidationBehavior)
+    
+    alt Validation Failed
+        Pipe-->>API: Return Validation Failure DTO
+        API-->>Customer: HTTP 400 Bad Request (ProblemDetails JSON)
+    else Validation Succeeded
+        Pipe->>Handler: Dispatch Command
+        Handler->>BasketRepo: GetByUserIdAsync(UserId)
+        BasketRepo->>DB: SELECT * FROM Baskets WHERE UserId = ...
+        DB-->>BasketRepo: Return basket details
+        BasketRepo-->>Handler: Return basket entity
+        
+        alt Basket Empty
+            Handler-->>Pipe: Return Result.Failure(EmptyOrder)
+            Pipe-->>API: Map to HTTP Result
+            API-->>Customer: HTTP 400 Bad Request
+        else Basket Not Empty
+            Note over Handler,DB: Phase 1: Lightweight Pre-check (No locks)
+            Handler->>ProductRepo: GetByIdsAsync(productIds)
+            ProductRepo->>DB: SELECT * FROM Products WHERE Id IN (...)
+            DB-->>ProductRepo: Return products (current stock, status, prices)
+            ProductRepo-->>Handler: Return product list
+            
+            Handler->>Handler: Validate existence, status, and stock
+            alt Pre-check Failed
+                Handler-->>Pipe: Return validation failure (e.g. InsufficientStock)
+                Pipe-->>API: Map to HTTP Result
+                API-->>Customer: HTTP 400 Bad Request (or 409 Conflict)
+            else Pre-check Succeeded
+                Note over Handler,DB: Phase 2: Atomic Decrement inside Transaction
+                Handler->>UOW: ExecuteInTransactionAsync(action)
+                UOW->>DB: Begin Transaction
+                
+                loop For Each Basket Item
+                    Handler->>ProductRepo: TryDecrementStockAsync(ProductId, Qty)
+                    ProductRepo->>DB: UPDATE Products SET Stock = Stock - Qty WHERE Id = ProductId AND IsDeleted = FALSE AND IsActive = TRUE AND Stock >= Qty
+                    DB-->>ProductRepo: Return rows affected (1 = success, 0 = failure)
+                    ProductRepo-->>Handler: Return affected rows count
+                    
+                    alt TryDecrementStockAsync fails (affected == 0)
+                        Note over Handler,DB: Race condition: Stock was exhausted between Phase 1 and Phase 2.
+                        Handler-->>UOW: Throw AppException(InsufficientStock)
+                        UOW->>DB: Rollback Transaction
+                        Note over DB: Database transaction rolled back.<br/>Previously decremented items are restored.
+                        UOW-->>Handler: Propagate AppException
+                        Handler->>Handler: Catch AppException
+                        Handler-->>Pipe: Return Result.Failure(InsufficientStock)
+                        Pipe-->>API: Map to HTTP Result
+                        API-->>Customer: HTTP 400 Bad Request
+                    end
+                end
+                
+                Note over Handler: Snapshot prices, calculate total, build Order entity
+                Handler->>OrderRepo: Add(Order)
+                OrderRepo->>DB: INSERT INTO Orders, OrderItems
+                
+                Handler->>BasketRepo: RemoveAsync(UserId)
+                BasketRepo->>DB: DELETE FROM Baskets WHERE UserId = ...
+                
+                UOW->>DB: Commit Transaction
+                Note over DB: Transaction committed.<br/>Stock updates and Order details persisted.
+                
+                critical Cache Invalidation
+                    Handler->>Cache: Remove("products:version")
+                    Handler->>Cache: Remove("reports:version")
+                    Note over Cache: Evicts version keys.<br/>Invalidates cached product lists and reports.
+                end
+                
+                Handler-->>Pipe: Return Result.Success(OrderDetails)
+                Pipe-->>API: Return Result.Success(OrderDetails)
+                API-->>Customer: HTTP 201 Created (JSON Response)
+            end
+        end
+    end
+```
+
+### Key Execution Highlights
+* **Non-Blocking Read (Phase 1):** The handler fetches the products with a standard `SELECT` query, avoiding `FOR UPDATE` locking. This eliminates database contention for hot items during catalog browsing or high-volume checkouts.
+* **Database Guarded Atomic Decrement (Phase 2):** Instead of checking stock in memory and performing an un-guarded update, the SQL `UPDATE` statement contains the check logic: `AND "Stock" >= {quantity}`. Since updates are run sequentially/atomically per row in PostgreSQL, this ensures stock never goes below zero.
+* **All-or-Nothing Transactional Consistency:** If checking out multiple products and any single product's atomic decrement fails, the transaction is rolled back, guaranteeing that no partial stock decrements occur.
+* **Cache Invalidation:** Once the transaction commits, product stock caching is invalidated to ensure customers see updated stock values on the catalog page.
+
+---
+
+## 6.3 Scenario 3: Authentication & Token Refresh (JWT Rotation)
 
 This scenario illustrates the workflow for registering a user, logging in to obtain tokens, and using the refresh token to rotate expired access tokens.
 
@@ -133,11 +239,11 @@ sequenceDiagram
 
 ---
 
-## 6.3 Scenario 3: High-Performance Catalog Search & Caching (GET /api/v1/products)
+## 6.4 Scenario 4: High-Performance Catalog Search & Caching (GET /api/v1/products)
 
 To guarantee sub-200ms (typically sub-50ms) latency for the catalog search endpoint under high-traffic load, OrderHub implements a dual-path caching and search-indexing strategy.
 
-### 6.3.1 Scenario 3a: High-Performance Cache HIT (Fast Path - Latency < 5ms)
+### 6.4.1 Scenario 4a: High-Performance Cache HIT (Fast Path - Latency < 5ms)
 
 When the queried catalog parameters are already cached, the handler retrieves the pre-assembled results directly from `IMemoryCache` in memory. This path bypasses the database and locks entirely, completing in under 5ms.
 
@@ -168,7 +274,7 @@ sequenceDiagram
 
 ---
 
-### 6.3.2 Scenario 3b: Cache MISS with Thundering Herd Prevention and GIN Search (Latency < 100ms)
+### 6.4.2 Scenario 4b: Cache MISS with Thundering Herd Prevention and GIN Search (Latency < 100ms)
 
 When concurrent requests miss the cache (e.g. after database migrations or invalidation), the `CacheStampedeGuard` locks concurrent threads on a key-specific semaphore to prevent overloading the database. The single database thread resolves the text query in milliseconds using the **GIN Trigram Index** before populating the cache.
 
@@ -230,7 +336,7 @@ sequenceDiagram
 
 ---
 
-## 6.4 Scenario 4: Cancel Order with Stock Restoration
+## 6.5 Scenario 5: Cancel Order with Stock Restoration
 
 When a pending order is cancelled, the application updates the order status and restores the reserved product stock. Both operations run within a single transaction to ensure consistency.
 

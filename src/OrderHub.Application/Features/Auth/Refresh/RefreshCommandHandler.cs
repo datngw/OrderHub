@@ -54,9 +54,18 @@ public sealed class RefreshCommandHandler(
         var user = existingToken.User;
         var accessToken = tokenService.GenerateAccessToken(user.Id, user.Email, user.Role.ToString());
 
+        var accessTokenExpiresAt = now.AddMinutes(_jwtOptions.AccessTokenMinutes);
+        var refreshTokenExpiresAt = now.AddDays(_jwtOptions.RefreshTokenDays);
+
         logger.LogInformation("Token refreshed for user {UserId}", existingToken.UserId);
 
-        return Result<AuthResponse>.Success(user.Adapt<AuthResponse>() with { AccessToken = accessToken, RefreshToken = newRefreshToken.Token });
+        return Result<AuthResponse>.Success(user.Adapt<AuthResponse>() with
+        {
+            AccessToken = accessToken,
+            RefreshToken = newRefreshToken.Token,
+            AccessTokenExpiresAt = accessTokenExpiresAt,
+            RefreshTokenExpiresAt = refreshTokenExpiresAt,
+        });
     }
 
     private async Task RevokeTokenFamilyAsync(RefreshToken revokedToken, CancellationToken cancellationToken)

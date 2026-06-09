@@ -7,9 +7,14 @@ public sealed class ProductMappingConfig : IRegister
 {
     public void Register(TypeAdapterConfig config)
     {
+        config.NewConfig<Product, ProductResponse>()
+            .Map(dest => dest.GalleryImageUrls, src => src.GalleryImageUrls.ToList());
+
         config.NewConfig<UpdateProduct.UpdateProductCommand, Product>()
             .Ignore(p => p.Id)
             .Ignore(p => p.SKU)
+            .Ignore(p => p.MainImageUrl!)
+            .Ignore(p => p.GalleryImageUrls)
             .Ignore(p => p.CreatedAt)
             .Ignore(p => p.UpdatedAt!);
     }

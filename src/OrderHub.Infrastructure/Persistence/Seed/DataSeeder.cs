@@ -28,6 +28,12 @@ public sealed class DataSeeder(IPasswordHasher passwordHasher)
 
     public void Seed(OrderHubDbContext context)
     {
+        SeedUsers(context);
+        SeedProducts(context);
+    }
+
+    private void SeedUsers(OrderHubDbContext context)
+    {
         if (context.Users.Any()) return;
 
         var admin = new User
@@ -35,6 +41,7 @@ public sealed class DataSeeder(IPasswordHasher passwordHasher)
             Email = "admin@orderhub.com",
             PasswordHash = passwordHasher.HashPassword("Admin@123"),
             FullName = "System Admin",
+            Phone = "0900000001",
             Role = UserRoleEnum.Admin
         };
 
@@ -43,11 +50,17 @@ public sealed class DataSeeder(IPasswordHasher passwordHasher)
             Email = "customer@orderhub.com",
             PasswordHash = passwordHasher.HashPassword("Customer@123"),
             FullName = "John Doe",
+            Phone = "0900000002",
             Role = UserRoleEnum.Customer
         };
 
         context.Users.AddRange(admin, customer);
         context.SaveChanges();
+    }
+
+    private void SeedProducts(OrderHubDbContext context)
+    {
+        if (context.Products.Any()) return;
 
         const int totalProducts = 10_000;
         var products = new List<Product>(totalProducts);
@@ -64,7 +77,7 @@ public sealed class DataSeeder(IPasswordHasher passwordHasher)
                 SKU = $"SKU-{i:D5}",
                 Name = string.Format(template, variant),
                 Description = $"High-quality {category.ToLowerInvariant()} product. {string.Format(template, variant)} — reliable performance with modern design.",
-                Price = Math.Round((decimal)(random.NextDouble() * 1990) + 9.99m, 2),
+                Price = Math.Round((decimal)(random.NextDouble() * 49_891_000) + 99_000m) / 1000m * 1000m,
                 Stock = random.Next(0, 500),
                 Category = category
             });

@@ -8,5 +8,7 @@ public record ProductResponse(
     decimal Price,
     int Stock,
     string Category,
+    string? MainImageUrl,
+    List<string> GalleryImageUrls,
     bool IsActive,
     DateTime CreatedAt);

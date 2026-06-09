@@ -24,6 +24,9 @@ public sealed class CreateProductCommandHandler(
             return Result<ProductResponse>.Failure(ProductErrors.SkuAlreadyExists(request.SKU));
 
         var product = request.Adapt<Product>();
+
+        product.GalleryImageUrls = request.GalleryImageUrls ?? [];
+
         productRepository.Add(product);
         await unitOfWork.SaveChangesAsync(cancellationToken);
 

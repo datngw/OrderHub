@@ -10,10 +10,10 @@ using OrderHub.Application.Features.Auth;
 using OrderHub.Application.Features.Auth.ChangePassword;
 using OrderHub.Application.Features.Auth.ForgotPassword;
 using OrderHub.Application.Features.Auth.Login;
-using OrderHub.Domain.Users;
 using OrderHub.Application.Features.Auth.Logout;
 using OrderHub.Application.Features.Auth.Refresh;
 using OrderHub.Application.Features.Auth.Register;
+using OrderHub.Application.Features.Auth.ResetPassword;
 
 namespace OrderHub.Api.Endpoints.Auth;
 
@@ -72,7 +72,16 @@ public sealed class AuthEndpoints : IEndpointGroup
             .ProducesProblem(StatusCodes.Status429TooManyRequests);
 
         group.MapPost("/forgot-password", HandleForgotPassword)
-            .WithName("ForgotPassword").WithSummary("Reset password using verification code")
+            .WithName("ForgotPassword").WithSummary("Request a password reset code")
+            .HasApiVersion(new ApiVersion(1))
+            .AllowAnonymous()
+            .RequireRateLimiting("auth-login")
+            .Produces(StatusCodes.Status204NoContent)
+            .ProducesValidationProblem()
+            .ProducesProblem(StatusCodes.Status429TooManyRequests);
+
+        group.MapPost("/reset-password", HandleResetPassword)
+            .WithName("ResetPassword").WithSummary("Reset password using verification code")
             .HasApiVersion(new ApiVersion(1))
             .AllowAnonymous()
             .RequireRateLimiting("auth-login")
@@ -95,7 +104,7 @@ public sealed class AuthEndpoints : IEndpointGroup
     private static async Task<IResult> HandleRegister(
         [FromBody] RegisterRequest request, IMediator mediator, CancellationToken ct)
     {
-        var result = await mediator.Send(new RegisterCommand(request.Email, request.Password, request.FullName), ct);
+        var result = await mediator.Send(new RegisterCommand(request.Email, request.Password, request.FullName, request.Phone), ct);
         return Results.Created("/api/v1/auth/login", result.Value);
     }
 
@@ -123,8 +132,15 @@ public sealed class AuthEndpoints : IEndpointGroup
     private static async Task<IResult> HandleForgotPassword(
         [FromBody] ForgotPasswordRequest request, IMediator mediator, CancellationToken ct)
     {
+        await mediator.Send(new ForgotPasswordCommand(request.Email), ct);
+        return Results.NoContent();
+    }
+
+    private static async Task<IResult> HandleResetPassword(
+        [FromBody] ResetPasswordRequest request, IMediator mediator, CancellationToken ct)
+    {
         await mediator.Send(
-            new ForgotPasswordCommand(request.Email, request.Code, request.NewPassword), ct);
+            new ResetPasswordCommand(request.Email, request.Code, request.NewPassword), ct);
         return Results.NoContent();
     }
 
